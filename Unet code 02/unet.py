@@ -6,48 +6,61 @@ import matplotlib.pyplot as plt
 
 dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
-#Preprocessing Steps
+# Preprocessing Steps
 
 def normalize(input_image, input_mask):
+    
+    # converts input_image from uint8 to tf.float32 and then divides each pixel value by 255.0, 
+    # normalizing the pixel values between 0,1. Convert to zero based indexing 
     input_image = tf.cast(input_image, tf.float32) / 255.0
-    input_mask = input_mask - 1 # Convert to zero based indexing
+    input_mask = input_mask - 1 
     return input_image, input_mask
 
 def load_train_images(sample):
    
-    # resize the image
+    # resize the image to 128X128
    
     input_image = tf.image.resize(sample['image'], (128, 128))
     input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
    
-    # data augmentation
+    # data augmentation, randomaly flips an image and mask horizonatlly 
    
     if tf.random.uniform(()) > 0.5:
         input_image = tf.image.flip_left_right(input_image)
         input_mask = tf.image.flip_left_right(input_mask)
     
-    # normalize the images
+    # normalize the images and masks
     
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
 def load_test_images(sample):
    
-    # resize the image
+    # resize the image to 128X128
    
     input_image = tf.image.resize(sample['image'], (128, 128))
     input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
     
-    # normalize the images
+    # normalize the images and masks
+
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
+
+# Itterates through the dataset and applies the load functions two each data point, 
+# which is then placed in another arary
 
 train_dataset = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
+# Establishes that 64 examples from the dataset will be 
+# proccessed at a time during training or testing. Establishes 
+# that 1000 datapoints will be stored to be shuffled 
+
 BATCH_SIZE = 64
 BUFFER_SIZE = 1000
 
+# stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
+# 
 train_dataset = train_dataset.cache().shuffle(BATCH_SIZE).batch(BATCH_SIZE).repeat()    
 train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset.batch(BATCH_SIZE)
