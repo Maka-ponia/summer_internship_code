@@ -26,34 +26,46 @@ def normalize(input_image, input_mask):
     return input_image, input_mask
 
 def load_train_images(sample):
-   
+    try:
+    
     # resize the image to 128X128
-   
-    input_image = tf.image.resize(sample['image'], (128, 128))
-    input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
-   
+        
+        input_image = tf.image.resize(sample['image'], (128, 128))
+        input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
+
     # data augmentation, randomaly flips an image and mask horizonatlly 
-   
-    if tf.random.uniform(()) > 0.5:
-        input_image = tf.image.flip_left_right(input_image)
-        input_mask = tf.image.flip_left_right(input_mask)
-    
+
+        if tf.random.uniform(()) > 0.5:
+            input_image = tf.image.flip_left_right(input_image)
+            input_mask = tf.image.flip_left_right(input_mask)
+            
     # normalize the images and masks
+
+        input_image, input_mask = normalize(input_image, input_mask)
+        return input_image, input_mask
+    except Exception as e:
+        print(f"Skipping corrupted file during training data loading: {e}")
+        return None  
     
-    input_image, input_mask = normalize(input_image, input_mask)
-    return input_image, input_mask
+    # Return None for invalid files
 
 def load_test_images(sample):
-   
+    
     # resize the image to 128X128
-   
-    input_image = tf.image.resize(sample['image'], (128, 128))
-    input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
+    
+    try:
+        input_image = tf.image.resize(sample['image'], (128, 128))
+        input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
     
     # normalize the images and masks
-
-    input_image, input_mask = normalize(input_image, input_mask)
-    return input_image, input_mask
+    
+        input_image, input_mask = normalize(input_image, input_mask)
+        return input_image, input_mask
+    except Exception as e:
+        print(f"Skipping corrupted file during testing data loading: {e}")
+        return None  
+    
+    # Return None for invalid files
 
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
