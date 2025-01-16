@@ -20,10 +20,15 @@ dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 def normalize(input_image, input_mask):
     
     # converts input_image from uint8 to tf.float32 and then divides each pixel value by 255.0, 
-    # normalizing the pixel values between 0,1. Convert to zero based indexing 
-    input_image = tf.cast(input_image, tf.float32) / 255.0
-    input_mask = input_mask - 1 
-    return input_image, input_mask
+    # normalizing the pixel values between 0,1. Convert to zero based indexing
+    
+    try:
+        input_image = tf.cast(input_image, tf.float32) / 255.0
+        input_mask = input_mask - 1
+        return input_image, input_mask
+    except Exception as e:
+        print(f"Skipping corrupted data during normalization: {e}")
+        return None, None
 
 def load_train_images(sample):
     try:
@@ -148,7 +153,7 @@ def build_unet_model(output_channels):
     
     # output layer
     
-    outputs = layers.Conv2D(output_channels, 1, padding = 'same', activation = 'relu')(u9)
+    outputs = layers.Conv2D(output_channels, 1, padding = 'same', activation = 'softmax')(u9)
     
     # unet model
     
@@ -164,7 +169,10 @@ def build_unet_model(output_channels):
     
 output_channels = 3
 model = build_unet_model(output_channels)
-model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = ['accuracy'])
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
 # plot the model doesnt work but seems not important
 
 # tf.keras.utils.plot_model(model, show_shapes = True, expand_nested = False, dpi = 64)
