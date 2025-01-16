@@ -4,6 +4,15 @@ import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Check and configure GPUs
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+    except RuntimeError as e:
+        print(e)
+
 dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
 # Preprocessing Steps
@@ -56,11 +65,11 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 # proccessed at a time during training or testing. Establishes 
 # that 1000 datapoints will be stored to be shuffled 
 
-BATCH_SIZE = 64
+BATCH_SIZE = 1
 BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
-# 
+# Grabs data whil data is still being proccesed
 train_dataset = train_dataset.cache().shuffle(BATCH_SIZE).batch(BATCH_SIZE).repeat()    
 train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset.batch(BATCH_SIZE)
@@ -98,6 +107,8 @@ def upsample_blocks(x, conv_features, n_filters):
     x = layers.Dropout(0.3)(x)
     x = double_conv_block(x, n_filters)
     return x
+
+# Builds the actually model that the image is put through
     
 def build_unet_model(output_channels):
     
@@ -112,7 +123,7 @@ def build_unet_model(output_channels):
     f3, p3 = downsample_block(p2, 256)
     f4, p4 = downsample_block(p3, 512)
     
-    # Intermediate block
+    # Intermediate/Bottle neck block
     
     intermediate_block = double_conv_block(p4, 1024)
     
@@ -142,7 +153,6 @@ def build_unet_model(output_channels):
 output_channels = 3
 model = build_unet_model(output_channels)
 model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metrics = ['accuracy'])
-
 # plot the model doesnt work but seems not important
 
 # tf.keras.utils.plot_model(model, show_shapes = True, expand_nested = False, dpi = 64)
