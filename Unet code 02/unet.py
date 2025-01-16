@@ -159,9 +159,9 @@ model.compile(optimizer = 'adam', loss = 'sparse_categorical_crossentropy', metr
 
 # Train the model
 
-EPOCHS = 20
-
-steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
-validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
-
-history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset)
+# Specify GPU 1 using tf.device context manager
+with tf.device('/GPU:1'):
+    EPOCHS = 20
+    steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
+    validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
+    history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset)
