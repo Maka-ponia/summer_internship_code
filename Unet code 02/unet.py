@@ -5,9 +5,7 @@ import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
 
-
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
-
 
 # Check and configure GPUs
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -87,8 +85,8 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 # proccessed at a time during training or testing. Establishes 
 # that 1000 datapoints will be stored to be shuffled 
 
-BATCH_SIZE = 1
-BUFFER_SIZE = 100
+BATCH_SIZE = 5
+BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
