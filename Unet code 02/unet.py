@@ -82,7 +82,7 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 # proccessed at a time during training or testing. Establishes 
 # that 1000 datapoints will be stored to be shuffled 
 
-BATCH_SIZE = 16
+BATCH_SIZE = 1
 BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
@@ -168,49 +168,23 @@ def build_unet_model(output_channels):
 #     sample_mask(60)
 
 
-# Define the Dice coefficient
-def dice_coefficient(y_true, y_pred, smooth=1e-6):
-    """
-    Compute the Dice coefficient.
+# Set up MirroredStrategy for multi-GPU training
+strategy = tf.distribute.MirroredStrategy()
+print(f"Number of devices: {strategy.num_replicas_in_sync}")
     
-    Parameters:
-    - y_true: Ground truth labels.
-    - y_pred: Predicted labels.
-    - smooth: A smoothing factor to avoid division by zero.
-    
-    Returns:
-    - Dice coefficient value.
-    """
-    # Flatten tensors for calculation
-    y_true_f = tf.keras.backend.flatten(y_true)
-    y_pred_f = tf.keras.backend.flatten(y_pred)
-    
-    # Compute the intersection and union
-    intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
-    union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
-    
-    # Return Dice coefficient
-    return (2. * intersection + smooth) / (union + smooth)
-    
-output_channels = 3
-model = build_unet_model(output_channels)
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy', dice_coefficient])
+with strategy.scope():
+    output_channels = 3
+    model = build_unet_model(output_channels)
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+                  loss='sparse_categorical_crossentropy',
+                  metrics=['accuracy'])
+
 
 # plot the model doesnt work but seems not important
 
 # tf.keras.utils.plot_model(model, show_shapes = True, expand_nested = False, dpi = 64)
 
 # Train the model
-
-# Create the MirroredStrategy.
-strategy = tf.distribute.MirroredStrategy()
-
-# Print the number of devices (GPUs) being used.
-print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
-
-with strategy.scope():
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
