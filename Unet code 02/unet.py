@@ -166,25 +166,21 @@ def build_unet_model(output_channels):
 #     #display_sample([sample_image, sample_mask])
 #     print(sample_mask)
 #     sample_mask(60)
-
-
-# Set up MirroredStrategy for multi-GPU training
-strategy = tf.distribute.MirroredStrategy()
-print(f"Number of devices: {strategy.num_replicas_in_sync}")
     
-with strategy.scope():
-    output_channels = 3
-    model = build_unet_model(output_channels)
-    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
-                  loss='sparse_categorical_crossentropy',
-                  metrics=['accuracy'])
-
+output_channels = 3
+model = build_unet_model(output_channels)
+model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
 
 # plot the model doesnt work but seems not important
 
 # tf.keras.utils.plot_model(model, show_shapes = True, expand_nested = False, dpi = 64)
 
 # Train the model
+
+# Specify GPU 1 using tf.device context manager
+with tf.device('/GPU:1'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
