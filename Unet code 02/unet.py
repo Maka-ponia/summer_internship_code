@@ -85,7 +85,7 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 # proccessed at a time during training or testing. Establishes 
 # that 1000 datapoints will be stored to be shuffled 
 
-BATCH_SIZE = 5
+BATCH_SIZE = 10
 BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
