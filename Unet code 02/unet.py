@@ -4,6 +4,10 @@ import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
 
+
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+
+
 # Check and configure GPUs
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
