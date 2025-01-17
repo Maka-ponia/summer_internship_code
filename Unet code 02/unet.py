@@ -174,26 +174,15 @@ def build_unet_model(output_channels):
 
 def dice_coefficient(y_true, y_pred, smooth=1e-6):
     """
-    Compute the Dice coefficient.
-    
-    Parameters:
-    - y_true: Ground truth labels.
-    - y_pred: Predicted labels.
-    - smooth: A smoothing factor to avoid division by zero.
-    
-    Returns:
-    - Dice coefficient value.
+    Compute the Dice coefficient for binary or multiclass segmentation.
     """
-    # Flatten tensors for calculation
-    y_true_f = tf.keras.backend.flatten(y_true)
+    y_pred = tf.nn.softmax(y_pred)  # Convert logits to probabilities
+    y_true_f = tf.keras.backend.flatten(tf.one_hot(tf.cast(y_true, tf.int32), depth=output_channels))
     y_pred_f = tf.keras.backend.flatten(y_pred)
-    
-    # Compute the intersection and union
     intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
-    
-    # Return Dice coefficient
     return (2. * intersection + smooth) / (union + smooth)
+
     
 output_channels = 3
 model = build_unet_model(output_channels)
