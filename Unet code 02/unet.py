@@ -83,7 +83,7 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 # that 1000 datapoints will be stored to be shuffled 
 
 BATCH_SIZE = 1
-BUFFER_SIZE = 1000
+BUFFER_SIZE = 100
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
@@ -180,7 +180,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
 # Train the model
 
 # Specify GPU 1 using tf.device context manager
-with tf.device('/GPU:1'):
+with tf.device('/GPU:3'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
