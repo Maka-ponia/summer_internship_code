@@ -204,8 +204,14 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
 
 # Train the model
 
+# Create the MirroredStrategy.
+strategy = tf.distribute.MirroredStrategy()
+
+# Print the number of devices (GPUs) being used.
+print('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+
 # Specify GPU 1 using tf.device context manager
-with tf.device('/GPU:1'):
+with strategy.scope():
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
