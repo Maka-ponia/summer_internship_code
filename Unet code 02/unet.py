@@ -40,47 +40,24 @@ def load_train_images(sample):
         input_image = tf.image.resize(sample['image'], (128, 128))
         input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
         
-        # Data augmentation
+        # Data augmentation: random horizontal flip
         if tf.random.uniform(()) > 0.5:
-            # Random horizontal flip
             input_image = tf.image.flip_left_right(input_image)
             input_mask = tf.image.flip_left_right(input_mask)
 
+        # Additional data augmentation (e.g., rotation, brightness adjustment)
         if tf.random.uniform(()) > 0.5:
-            # Random vertical flip
-            input_image = tf.image.flip_up_down(input_image)
-            input_mask = tf.image.flip_up_down(input_mask)
-
-        if tf.random.uniform(()) > 0.5:
-            # Random rotation
-            rotation_angle = tf.random.uniform([], minval=0, maxval=0.5 * 3.14159265359)  # Up to 90 degrees
-            input_image = tfa.image.rotate(input_image, rotation_angle)
-            input_mask = tfa.image.rotate(input_mask, rotation_angle)
-
-        if tf.random.uniform(()) > 0.5:
-            # Random brightness adjustment
             input_image = tf.image.random_brightness(input_image, max_delta=0.2)
-
+        
         if tf.random.uniform(()) > 0.5:
-            # Random contrast adjustment
             input_image = tf.image.random_contrast(input_image, lower=0.8, upper=1.2)
 
-        if tf.random.uniform(()) > 0.5:
-            # Random zoom
-            scales = tf.random.uniform([], minval=0.8, maxval=1.2)
-            input_image = tfa.image.resize(input_image, (int(128 * scales), int(128 * scales)))
-            input_mask = tfa.image.resize(input_mask, (int(128 * scales), int(128 * scales)))
-            input_image = tf.image.resize_with_crop_or_pad(input_image, 128, 128)
-            input_mask = tf.image.resize_with_crop_or_pad(input_mask, 128, 128)
-
-        # Normalize the image and mask
+        # Normalize images and masks
         input_image, input_mask = normalize(input_image, input_mask)
         return input_image, input_mask
-    
     except Exception as e:
         print(f"Skipping corrupted file during training data loading: {e}")
         return None
-
 
 def load_test_images(sample):
     
