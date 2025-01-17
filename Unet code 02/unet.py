@@ -4,6 +4,7 @@ from tensorflow.keras import layers, models
 import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
+import tensorflow_addons as tfa
 
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
