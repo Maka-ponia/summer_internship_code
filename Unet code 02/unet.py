@@ -197,7 +197,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
 # Train the model
 
 # Specify GPU 1 using tf.device context manager
-with tf.device('/GPU:3'):
+with tf.device('/GPU:2'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
