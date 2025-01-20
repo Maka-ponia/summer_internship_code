@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
 
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Check and configure GPUs
 gpus = tf.config.experimental.list_physical_devices('GPU')
@@ -130,6 +130,14 @@ def upsample_blocks(x, conv_features, n_filters):
     x = double_conv_block(x, n_filters)
     return x
 
+def dice_coefficient(y_true, y_pred, smooth=1e-6): 
+    y_pred = tf.nn.softmax(y_pred) 
+    y_true_f = tf.keras.backend.flatten(tf.one_hot(tf.cast(y_true, tf.int32), depth=output_channels))
+    y_pred_f = tf.keras.backend.flatten(y_pred)
+    intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
+    union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
+    return (2. * intersection + smooth) / (union + smooth)
+
 # Builds the actually model that the image is put through
     
 def build_unet_model(output_channels):
@@ -172,18 +180,8 @@ def build_unet_model(output_channels):
 #     print(sample_mask)
 #     sample_mask(60)
 
-def dice_coefficient(y_true, y_pred, smooth=1e-6):
-    """
-    Compute the Dice coefficient for binary or multiclass segmentation.
-    """
-    y_pred = tf.nn.softmax(y_pred)  # Convert logits to probabilities
-    y_true_f = tf.keras.backend.flatten(tf.one_hot(tf.cast(y_true, tf.int32), depth=output_channels))
-    y_pred_f = tf.keras.backend.flatten(y_pred)
-    intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
-    union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
-    return (2. * intersection + smooth) / (union + smooth)
 
-    
+# configures the model for training by specifying its optimizer, loss function, and evaluation metrics
 output_channels = 3
 model = build_unet_model(output_channels)
 model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
@@ -196,9 +194,22 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
 
 # Train the model
 
-# Specify GPU 1 using tf.device context manager
-with tf.device('/GPU:2'):
+# Specify GPU being used by wtf.device context manager
+with tf.device('/GPU:3'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
     history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset)
+
+def create_mask(pred_mask):
+    pred_mask = tf.argmax(pred_mask, axis=-1)
+    pred_mask = pred_mask[..., tf.newaxis]
+    return pred_mask[0]
+
+def show_predications(dataset=None, num=1):
+    if dataset:
+        for image, mask in dataset.take(num):
+            pred_mask = model.predict(image)
+            display_sample([image[0], mask[0], create_mask[pred_mask]])
+            
+show_predications(test_dataset, 10)
