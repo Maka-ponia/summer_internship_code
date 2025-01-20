@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
 matplotlib.use('Agg')  # Use non-interactive backend
 
-
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Check and configure GPUs
@@ -101,18 +100,20 @@ test_dataset = test_dataset.batch(BATCH_SIZE)
 
 # explanatory Data Analysis
 
-def display_sample(image_list):
-    plt.figure(figsize=(10,10))
+def display_sample(image_list, save_path="output"):
+    plt.figure(figsize=(10, 10))
     title = ['Input Image', 'True Mask', 'Predicted Mask']
-    
+
     for i in range(len(image_list)):
-        plt.subplot(1, len(image_list), i+1)
+        plt.subplot(1, len(image_list), i + 1)
         plt.title(title[i])
         plt.imshow(tf.keras.utils.array_to_img(image_list[i]))
         plt.axis('off')
+
+    # Save the plot instead of showing it
+    plt.savefig(f"{save_path}.png")
+    plt.close()
         
-    plt.show()
-    
 #Define
 
 def double_conv_block(x, n_filters):
@@ -213,6 +214,6 @@ def show_predications(dataset=None, num=1):
     if dataset:
         for image, mask in dataset.take(num):
             pred_mask = model.predict(image)
-            display_sample([image[0], mask[0], create_mask(pred_mask)])  
+            display_sample([image[0], mask[0], create_mask(pred_mask)], "images")  
             
 show_predications(test_dataset, 10)
