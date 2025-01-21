@@ -151,16 +151,21 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
+        # Get the number of channels in the input (y_true or y_pred)
+        channels = mask.shape[-1]  # Extract channel dimension (last dimension)
+        
         # Laplacian kernel for boundary detection (3x3)
         kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
+        
+        # Adjust kernel depth based on the number of channels in the input
+        kernel = kernel[..., None]  # Add a new dimension to make the kernel [1, 3, 3, 1]
+        kernel = tf.tile(kernel, [1, 1, channels, 1])  # Tile the kernel to match the input depth
+        
         kernel = tf.convert_to_tensor(kernel)  # Convert kernel to tensor
         
-        # Add channel dimension to kernel: [height, width, in_channels, out_channels]
-        kernel = kernel[None, ..., None]  # Shape becomes [1, 3, 3, 1]
-        
-        # Ensure the mask is in float32
-        mask = K.cast(mask, K.floatx())  # Cast mask to float32
-        mask = mask[None, ...]  # Add batch dimension: [1, height, width, channels]
+        # Cast mask to float32 and add batch dimension: [1, height, width, channels]
+        mask = K.cast(mask, K.floatx())  
+        mask = mask[None, ...]  # Add batch dimension
         
         # Perform convolution to get the boundary
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
