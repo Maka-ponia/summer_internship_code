@@ -184,7 +184,6 @@ def build_unet_model(output_channels):
 #     print(sample_mask)
 #     sample_mask(60)
 
-
 # configures the model for training by specifying its optimizer, loss function, and evaluation metrics
 output_channels = 3
 model = build_unet_model(output_channels)
@@ -200,7 +199,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
 
 # Specify GPU being used by wtf.device context manager
 with tf.device('/GPU:3'):
-    EPOCHS = 20
+    EPOCHS = 30
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
     history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset)
