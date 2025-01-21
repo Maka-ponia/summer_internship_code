@@ -6,7 +6,11 @@ import tensorflow_datasets as tfds
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
+import tensorflow.keras.backend as K
+from tensorflow.keras.losses import SparseCategoricalCrossentropy
+
 matplotlib.use('Agg')  # Use non-interactive backend
+num = 0
 
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
@@ -111,7 +115,9 @@ def display_sample(image_list, save_path="output"):
         plt.axis('off')
 
     # Save the plot instead of showing it
-    plt.savefig(f"{save_path}.png")
+    plt.savefig(f"{save_path + num}.png")
+    
+    num = num+1
     plt.close()
         
 #Define
@@ -142,6 +148,40 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
     return (2. * intersection + smooth) / (union + smooth)
 
+def boundary_iou_loss(y_true, y_pred):
+   
+    # Function to calculate the boundary of the mask (thin boundary).
+    def boundary(mask):
+        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])  # Laplacian kernel for boundary detection
+        mask = K.cast(mask, K.floatx())  # Ensure the mask is in float32
+        boundary = tf.nn.conv2d(mask[None, ...], kernel[None, ..., None], strides=[1, 1, 1, 1], padding='SAME')
+        boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
+        return boundary
+
+    # Compute the boundaries for both true and predicted masks
+    true_boundary = boundary(y_true)
+    pred_boundary = boundary(y_pred)
+
+    # Compute the intersection and union of the boundaries
+    intersection = K.sum(true_boundary * pred_boundary)
+    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
+
+    # Compute Boundary IoU as intersection over union
+    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
+
+    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
+
+# Define combined loss function (sparse categorical + boundary IoU)
+def combined_loss(y_true, y_pred):
+    # Sparse Categorical Crossentropy loss for pixel-wise accuracy
+    scce_loss = SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
+    
+    # Boundary IoU loss for boundary accuracy
+    bdy_loss = boundary_iou_loss(y_true, y_pred)
+    
+    # Combine the two losses (adjust the weights if necessary)
+    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss  # You can change the weights
+    return total_loss
 # Builds the actually model that the image is put through
     
 def build_unet_model(output_channels):
@@ -196,7 +236,7 @@ def build_unet_model(output_channels):
 output_channels = 3
 model = build_unet_model(output_channels)
 model.compile(optimizer='adam',
-              loss='sparse_categorical_crossentropy',
+              loss=combined_loss,
               metrics=['accuracy', dice_coefficient])
 
 # plot the model doesnt work but seems not important
