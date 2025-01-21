@@ -149,12 +149,21 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     return (2. * intersection + smooth) / (union + smooth)
 
 def boundary_iou_loss(y_true, y_pred):
-   
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
-        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]])  # Laplacian kernel for boundary detection
-        mask = K.cast(mask, K.floatx())  # Ensure the mask is in float32
-        boundary = tf.nn.conv2d(mask[None, ...], kernel[None, ..., None], strides=[1, 1, 1, 1], padding='SAME')
+        # Laplacian kernel for boundary detection (3x3)
+        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
+        kernel = tf.convert_to_tensor(kernel)  # Convert kernel to tensor
+        
+        # Add channel dimension to kernel: [height, width, in_channels, out_channels]
+        kernel = kernel[None, ..., None]  # Shape becomes [1, 3, 3, 1]
+        
+        # Ensure the mask is in float32
+        mask = K.cast(mask, K.floatx())  # Cast mask to float32
+        mask = mask[None, ...]  # Add batch dimension: [1, height, width, channels]
+        
+        # Perform convolution to get the boundary
+        boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
 
