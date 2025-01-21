@@ -195,7 +195,7 @@ def build_unet_model(output_channels):
 # configures the model for training by specifying its optimizer, loss function, and evaluation metrics
 output_channels = 3
 model = build_unet_model(output_channels)
-model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+model.compile(optimizer='adam',
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy', dice_coefficient])
 
