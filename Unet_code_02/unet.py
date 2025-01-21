@@ -159,7 +159,7 @@ def boundary_iou_loss(y_true, y_pred):
         
         # Adjust kernel depth based on the number of channels in the input
         kernel = kernel[..., None]  # Add a new dimension to make the kernel [1, 3, 3, 1]
-        kernel = tf.tile(kernel, [1, 1, channels, 1])  # Tile the kernel to match the input depth
+        kernel = tf.tile(kernel, [1, 1, 1, channels])  # Tile the kernel to match the input depth
         
         kernel = tf.convert_to_tensor(kernel)  # Convert kernel to tensor
         
