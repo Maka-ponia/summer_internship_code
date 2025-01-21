@@ -162,10 +162,10 @@ def boundary_iou_loss(y_true, y_pred):
         kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
         
         # Adjust kernel depth based on the number of channels in the input
-        kernel = kernel[..., np.newaxis]  # Add new dimension to make it [1, 3, 3, 1]
+        kernel = kernel[..., np.newaxis]  # Add new dimension to make it [3, 3, 1]
         
-        # Expand the kernel for the number of channels in the input
-        kernel = np.repeat(kernel, channels, axis=-1)  # Repeat kernel along the channel axis
+        # Tile the kernel to match the number of channels in the input
+        kernel = np.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
         
         kernel = tf.convert_to_tensor(kernel, dtype=tf.float32)  # Convert kernel to tensor
         
@@ -178,6 +178,18 @@ def boundary_iou_loss(y_true, y_pred):
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
 
+    # Compute the boundaries for both true and predicted masks
+    true_boundary = boundary(y_true)
+    pred_boundary = boundary(y_pred)
+
+    # Compute the intersection and union of the boundaries
+    intersection = K.sum(true_boundary * pred_boundary)
+    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
+
+    # Compute Boundary IoU as intersection over union
+    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
+
+    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
     # Compute the boundaries for both true and predicted masks
     true_boundary = boundary(y_true)
     pred_boundary = boundary(y_pred)
