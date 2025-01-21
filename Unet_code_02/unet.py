@@ -153,20 +153,28 @@ def build_unet_model(output_channels):
     # encoder - downsample
     
     f1, p1 = downsample_block(inputs, 64)
+    p1 = layers.Dropout(0.1)(p1)  
     f2, p2 = downsample_block(p1, 128)
+    p2 = layers.Dropout(0.2)(p2)
     f3, p3 = downsample_block(p2, 256)
+    p3 = layers.Dropout(0.3)(p3)
     f4, p4 = downsample_block(p3, 512)
+    p4 = layers.Dropout(0.4)(p4)
     
     # Intermediate/Bottle neck block
-    
     intermediate_block = double_conv_block(p4, 1024)
+    intermediate_block = layers.Dropout(0.5)(intermediate_block)
     
     # decoder - upsample
     
     u6 = upsample_blocks(intermediate_block, f4, 512)
+    u6 = layers.Dropout(0.4)(u6)
     u7 = upsample_blocks(u6, f3, 256)
+    u7 = layers.Dropout(0.3)(u7)
     u8 = upsample_blocks(u7, f2, 128)
+    u8 = layers.Dropout(0.2)(u8)
     u9 = upsample_blocks(u8, f1, 64)
+    u9 = layers.Dropout(0.1)(u9)
     
     # output layer
     
