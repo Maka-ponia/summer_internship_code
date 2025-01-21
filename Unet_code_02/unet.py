@@ -10,8 +10,6 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 
 matplotlib.use('Agg')  # Use non-interactive backend
-num = 0
-
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Check and configure GPUs
@@ -104,7 +102,7 @@ test_dataset = test_dataset.batch(BATCH_SIZE)
 
 # explanatory Data Analysis
 
-def display_sample(image_list, save_path="output"):
+def display_sample(image_list, save_path="output", num=0):
     plt.figure(figsize=(10, 10))
     title = ['Input Image', 'True Mask', 'Predicted Mask']
 
@@ -115,9 +113,9 @@ def display_sample(image_list, save_path="output"):
         plt.axis('off')
 
     # Save the plot instead of showing it
-    plt.savefig(f"{save_path + num}.png")
+    plt.savefig(f"{save_path}{num}.png")
     
-    num = num+1
+    num += 1  # Increment num after saving
     plt.close()
         
 #Define
