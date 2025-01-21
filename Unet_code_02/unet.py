@@ -148,6 +148,10 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
     return (2. * intersection + smooth) / (union + smooth)
 
+import tensorflow as tf
+from tensorflow.keras import backend as K
+import numpy as np
+
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
@@ -158,10 +162,12 @@ def boundary_iou_loss(y_true, y_pred):
         kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
         
         # Adjust kernel depth based on the number of channels in the input
-        kernel = kernel[..., None]  # Add a new dimension to make the kernel [1, 3, 3, 1]
-        kernel = tf.tile(kernel, [1, 1, 1, channels])  # Tile the kernel to match the input depth
+        kernel = kernel[..., np.newaxis]  # Add new dimension to make it [1, 3, 3, 1]
         
-        kernel = tf.convert_to_tensor(kernel)  # Convert kernel to tensor
+        # Expand the kernel for the number of channels in the input
+        kernel = np.repeat(kernel, channels, axis=-1)  # Repeat kernel along the channel axis
+        
+        kernel = tf.convert_to_tensor(kernel, dtype=tf.float32)  # Convert kernel to tensor
         
         # Cast mask to float32 and add batch dimension: [1, height, width, channels]
         mask = K.cast(mask, K.floatx())  
@@ -171,6 +177,20 @@ def boundary_iou_loss(y_true, y_pred):
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
+
+    # Compute the boundaries for both true and predicted masks
+    true_boundary = boundary(y_true)
+    pred_boundary = boundary(y_pred)
+
+    # Compute the intersection and union of the boundaries
+    intersection = K.sum(true_boundary * pred_boundary)
+    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
+
+    # Compute Boundary IoU as intersection over union
+    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
+
+    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
+
 
     # Compute the boundaries for both true and predicted masks
     true_boundary = boundary(y_true)
