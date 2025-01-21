@@ -169,6 +169,9 @@ def boundary_iou_loss(y_true, y_pred):
         
         kernel = tf.convert_to_tensor(kernel, dtype=tf.float32)  # Convert kernel to tensor
         
+        kernel = np.expand_dims(kernel, axis=-1)  # Add the last dimension to match [3, 3, channels, 1]
+
+        
         # Cast mask to float32 and add batch dimension: [1, height, width, channels]
         mask = K.cast(mask, K.floatx())  
         mask = mask[None, ...]  # Add batch dimension
