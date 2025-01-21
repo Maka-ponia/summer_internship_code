@@ -148,10 +148,6 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
     return (2. * intersection + smooth) / (union + smooth)
 
-import tensorflow as tf
-from tensorflow.keras import backend as K
-import numpy as np
-
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
@@ -159,22 +155,20 @@ def boundary_iou_loss(y_true, y_pred):
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
         # Laplacian kernel for boundary detection (3x3)
-        kernel = np.array([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=np.float32)
+        kernel = tf.constant([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=tf.float32)
         
         # Adjust kernel depth based on the number of channels in the input
-        kernel = kernel[..., np.newaxis]  # Add new dimension to make it [3, 3, 1]
+        kernel = tf.expand_dims(kernel, axis=-1)  # Make it [3, 3, 1]
         
-        # Tile the kernel to match the number of channels in the input
-        kernel = np.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
+        # Tile the kernel along the last axis (depth) to match the number of channels in the input
+        kernel = tf.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
         
-        kernel = tf.convert_to_tensor(kernel, dtype=tf.float32)  # Convert kernel to tensor
+        # Add the last dimension to make the kernel [3, 3, channels, 1]
+        kernel = tf.expand_dims(kernel, axis=-1)  # Now shape [3, 3, channels, 1]
         
-        kernel = np.expand_dims(kernel, axis=-1)  # Add the last dimension to match [3, 3, channels, 1]
-
-        
-        # Cast mask to float32 and add batch dimension: [1, height, width, channels]
-        mask = K.cast(mask, K.floatx())  
-        mask = mask[None, ...]  # Add batch dimension
+        # Cast mask to float32 and add batch dimension: [batch_size, height, width, channels]
+        mask = tf.cast(mask, tf.float32)
+        mask = tf.expand_dims(mask, axis=0)  # Add batch dimension: shape [1, height, width, channels]
         
         # Perform convolution to get the boundary
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
