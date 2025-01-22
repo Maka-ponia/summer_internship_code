@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
+from tensorflow.keras.optimizers import Adam
+
 
 matplotlib.use('Agg')  # Use non-interactive backend
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
@@ -248,7 +250,7 @@ def build_unet_model(output_channels):
 # configures the model for training by specifying its optimizer, loss function, and evaluation metrics
 output_channels = 3
 model = build_unet_model(output_channels)
-model.compile(optimizer='adam',
+model.compile(optimizer= Adam (learning_rate=1e-4),
               loss=combined_loss,
               metrics=['accuracy', dice_coefficient])
 
@@ -271,12 +273,11 @@ def create_mask(pred_mask):
     return pred_mask[0]
 
 def show_predications(dataset=None, num=1):
-    
+    number = 0
     if dataset:
-        num = 0
         for image, mask in dataset.take(num):
             pred_mask = model.predict(image)
-            display_sample([image[0], mask[0], create_mask(pred_mask)], "images", num)
-            num = num + 1  
+            display_sample([image[0], mask[0], create_mask(pred_mask)], "images", number)
+            number += 1  
             
 show_predications(test_dataset, 10)
