@@ -114,8 +114,6 @@ def display_sample(image_list, save_path="output", num=0):
 
     # Save the plot instead of showing it
     plt.savefig(f"{save_path}{num}.png")
-    
-    num += 1  # Increment num after saving
     plt.close()
         
 #Define
@@ -185,32 +183,6 @@ def boundary_iou_loss(y_true, y_pred):
     boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
 
     return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
-    # Compute the boundaries for both true and predicted masks
-    true_boundary = boundary(y_true)
-    pred_boundary = boundary(y_pred)
-
-    # Compute the intersection and union of the boundaries
-    intersection = K.sum(true_boundary * pred_boundary)
-    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
-
-    # Compute Boundary IoU as intersection over union
-    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
-
-    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
-
-
-    # Compute the boundaries for both true and predicted masks
-    true_boundary = boundary(y_true)
-    pred_boundary = boundary(y_pred)
-
-    # Compute the intersection and union of the boundaries
-    intersection = K.sum(true_boundary * pred_boundary)
-    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
-
-    # Compute Boundary IoU as intersection over union
-    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
-
-    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
 # Define combined loss function (sparse categorical + boundary IoU)
 def combined_loss(y_true, y_pred):
@@ -221,7 +193,7 @@ def combined_loss(y_true, y_pred):
     bdy_loss = boundary_iou_loss(y_true, y_pred)
     
     # Combine the two losses (adjust the weights if necessary)
-    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss  # You can change the weights
+    total_loss = 0.5 * scce_loss + 0.7 * bdy_loss  # You can change the weights
     return total_loss
 # Builds the actually model that the image is put through
     
@@ -299,9 +271,12 @@ def create_mask(pred_mask):
     return pred_mask[0]
 
 def show_predications(dataset=None, num=1):
+    
     if dataset:
+        num = 0
         for image, mask in dataset.take(num):
             pred_mask = model.predict(image)
-            display_sample([image[0], mask[0], create_mask(pred_mask)], "images")  
+            display_sample([image[0], mask[0], create_mask(pred_mask)], "images", num)
+            num = num + 1  
             
 show_predications(test_dataset, 10)
