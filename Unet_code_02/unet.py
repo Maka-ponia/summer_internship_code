@@ -9,12 +9,12 @@ import tensorflow_addons as tfa
 import tensorflow.keras.backend as K
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import ReduceLROnPlateau
 
-
-matplotlib.use('Agg')  # Use non-interactive backend
 os.environ["CUDA_VISIBLE_DEVICES"]="3"
 
 # Check and configure GPUs
+
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
     try:
@@ -43,15 +43,18 @@ def normalize(input_image, input_mask):
 def load_train_images(sample):
     try:
         # Resize the image and mask to 128x128
+        
         input_image = tf.image.resize(sample['image'], (128, 128))
         input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
         
         # Data augmentation: random horizontal flip
+        
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.flip_left_right(input_image)
             input_mask = tf.image.flip_left_right(input_mask)
 
         # Additional data augmentation (e.g., rotation, brightness adjustment)
+        
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.random_brightness(input_image, max_delta=0.2)
         
@@ -59,6 +62,7 @@ def load_train_images(sample):
             input_image = tf.image.random_contrast(input_image, lower=0.8, upper=1.2)
 
         # Normalize images and masks
+        
         input_image, input_mask = normalize(input_image, input_mask)
         return input_image, input_mask
     except Exception as e:
@@ -98,6 +102,7 @@ BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
+
 train_dataset = train_dataset.cache().shuffle(BATCH_SIZE).batch(BATCH_SIZE).repeat()    
 train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset.batch(BATCH_SIZE)
@@ -114,11 +119,12 @@ def display_sample(image_list, save_path="output", num=0):
         plt.imshow(tf.keras.utils.array_to_img(image_list[i]))
         plt.axis('off')
 
-    # Save the plot instead of showing it
+    # Saves the plot instead of showing it
+    
     plt.savefig(f"{save_path}{num}.png")
     plt.close()
         
-#Define
+#Defines the parts of the unet model 
 
 def double_conv_block(x, n_filters):
     x = layers.Conv2D(n_filters, 3, padding ='same', activation = 'relu', kernel_initializer = 'he_normal')(x)  
@@ -138,6 +144,8 @@ def upsample_blocks(x, conv_features, n_filters):
     x = double_conv_block(x, n_filters)
     return x
 
+# Calculates th dice_coe 
+
 def dice_coefficient(y_true, y_pred, smooth=1e-6): 
     y_pred = tf.nn.softmax(y_pred) 
     y_true_f = tf.keras.backend.flatten(tf.one_hot(tf.cast(y_true, tf.int32), depth=output_channels))
@@ -153,22 +161,28 @@ def boundary_iou_loss(y_true, y_pred):
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
         # Laplacian kernel for boundary detection (3x3)
+        
         kernel = tf.constant([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=tf.float32)
         
         # Adjust kernel depth based on the number of channels in the input
+        
         kernel = tf.expand_dims(kernel, axis=-1)  # Make it [3, 3, 1]
         
         # Tile the kernel along the last axis (depth) to match the number of channels in the input
+        
         kernel = tf.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
         
         # Add the last dimension to make the kernel [3, 3, channels, 1]
+        
         kernel = tf.expand_dims(kernel, axis=-1)  # Now shape [3, 3, channels, 1]
         
         # Cast mask to float32 and add batch dimension: [batch_size, height, width, channels]
+        
         mask = tf.cast(mask, tf.float32)
         mask = tf.expand_dims(mask, axis=0)  # Add batch dimension: shape [1, height, width, channels]
         
         # Perform convolution to get the boundary
+        
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
@@ -186,7 +200,7 @@ def boundary_iou_loss(y_true, y_pred):
 
     return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
-# Define combined loss function (sparse categorical + boundary IoU)
+# Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
     
@@ -200,11 +214,19 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 1 * scce_loss + 0.5 * bdy_loss  # You can change the weights
+    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss  # You can change the weights
     return total_loss
 
-# Builds the actually model that the image is put through
-    
+# Define the ReduceLROnPlateau callback
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_loss',   # Monitor validation loss
+    factor=0.5,           # Factor by which the learning rate will be reduced
+    patience=5,           # Number of epochs with no improvement before reducing
+    min_lr=1e-6           # Lower bound for the learning rate
+)
+
+# Builds the actually model that the image is put through   
+
 def build_unet_model(output_channels):
     
     # input
@@ -223,6 +245,7 @@ def build_unet_model(output_channels):
     p4 = layers.Dropout(0.4)(p4)
     
     # Intermediate/Bottle neck block
+    
     intermediate_block = double_conv_block(p4, 1024)
     intermediate_block = layers.Dropout(0.5)(intermediate_block)
     
@@ -248,25 +271,29 @@ def build_unet_model(output_channels):
     return unet_model
 
 # configures the model for training by specifying its optimizer, loss function, and evaluation metrics
+
 output_channels = 3
 model = build_unet_model(output_channels)
-model.compile(optimizer= Adam (learning_rate=1e-4),
+model.compile(optimizer='adam',
               loss=combined_loss,
               metrics=['accuracy', dice_coefficient])
 
-# Train the model
+# Trains the model Specify GPU being used by wtf.device context manager
 
-# Specify GPU being used by wtf.device context manager
 with tf.device('/GPU:3'):
     EPOCHS = 30
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
-    history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset)
+    history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset, callbacks=[reduce_lr])
+
+# Takes a tensor and then apples the labels based on the values in the tensor to create the masks
 
 def create_mask(pred_mask):
     pred_mask = tf.argmax(pred_mask, axis=-1)
     pred_mask = pred_mask[..., tf.newaxis]
     return pred_mask[0]
+
+# Creates a tensor repersenting the models prediction of a given image and then sends it to be printed
 
 def show_predications(dataset=None, num=1):
     number = 0
