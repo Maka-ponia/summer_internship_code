@@ -189,7 +189,7 @@ def boundary_iou_loss(y_true, y_pred):
 # Define combined loss function (sparse categorical + boundary IoU)
 def combined_loss(y_true, y_pred):
     # Sparse Categorical Crossentropy loss for pixel-wise accuracy
-    scce_loss = SparseCategoricalCrossentropy(from_logits=True)(y_true, y_pred)
+    scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred)
     
     # Boundary IoU loss for boundary accuracy
     bdy_loss = boundary_iou_loss(y_true, y_pred)
