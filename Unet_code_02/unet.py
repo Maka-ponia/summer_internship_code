@@ -195,7 +195,7 @@ def combined_loss(y_true, y_pred):
     bdy_loss = boundary_iou_loss(y_true, y_pred)
     
     # Combine the two losses (adjust the weights if necessary)
-    total_loss = 0.5 * scce_loss + 0.7 * bdy_loss  # You can change the weights
+    total_loss = 0.5 * scce_loss + 0.6 * bdy_loss  # You can change the weights
     return total_loss
 # Builds the actually model that the image is put through
     
