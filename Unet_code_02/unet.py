@@ -187,16 +187,22 @@ def boundary_iou_loss(y_true, y_pred):
     return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
 # Define combined loss function (sparse categorical + boundary IoU)
+
 def combined_loss(y_true, y_pred):
+    
     # Sparse Categorical Crossentropy loss for pixel-wise accuracy
+    
     scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred)
     
     # Boundary IoU loss for boundary accuracy
+    
     bdy_loss = boundary_iou_loss(y_true, y_pred)
     
     # Combine the two losses (adjust the weights if necessary)
-    total_loss = 0.5 * scce_loss + 0.6 * bdy_loss  # You can change the weights
+    
+    total_loss = 0.8 * scce_loss + 0.7 * bdy_loss  # You can change the weights
     return total_loss
+
 # Builds the actually model that the image is put through
     
 def build_unet_model(output_channels):
