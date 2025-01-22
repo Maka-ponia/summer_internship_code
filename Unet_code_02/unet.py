@@ -241,22 +241,12 @@ def build_unet_model(output_channels):
     
     return unet_model
 
-# for images, masks in train_dataset.take(3):
-#     sample_image, sample_mask = images[0], masks[0]
-#     #display_sample([sample_image, sample_mask])
-#     print(sample_mask)
-#     sample_mask(60)
-
 # configures the model for training by specifying its optimizer, loss function, and evaluation metrics
 output_channels = 3
 model = build_unet_model(output_channels)
 model.compile(optimizer= Adam (learning_rate=1e-4),
               loss=combined_loss,
               metrics=['accuracy', dice_coefficient])
-
-# plot the model doesnt work but seems not important
-
-# tf.keras.utils.plot_model(model, show_shapes = True, expand_nested = False, dpi = 64)
 
 # Train the model
 
