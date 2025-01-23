@@ -212,12 +212,6 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     dice_coeff = (2.0 * intersection + smooth) / (denominator + smooth)
     return 1.0 - dice_coeff
 
-# Calculates the binary_cross_loss
-
-def binary_crossentropy_loss(y_true, y_pred):
-    bce = tf.keras.losses.BinaryCrossentropy()
-    return bce(y_true, y_pred)
-
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
@@ -234,9 +228,7 @@ def combined_loss(y_true, y_pred):
     
     dice = dice_loss(y_true, y_pred)
     
-    bce = binary_crossentropy_loss(y_true, y_pred)
-
-    total_loss = 0.25 * scce_loss + 0.25 * bdy_loss + 0.25 * dice + 0.25 * bce
+    total_loss = 0.33 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
