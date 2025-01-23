@@ -47,13 +47,11 @@ def load_train_images(sample):
         input_image = tf.image.resize(sample['image'], (128, 128))
         input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
         
-        # Data augmentation: random horizontal flip
+        # Additional data augmentation (e.g., rotation, brightness adjustment, random horizontal flip)
         
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.flip_left_right(input_image)
             input_mask = tf.image.flip_left_right(input_mask)
-
-        # Additional data augmentation (e.g., rotation, brightness adjustment)
         
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.random_brightness(input_image, max_delta=0.2)
@@ -144,7 +142,7 @@ def upsample_blocks(x, conv_features, n_filters):
     x = double_conv_block(x, n_filters)
     return x
 
-# Calculates th dice_coe 
+# Calculates the dice_coe 
 
 def dice_coefficient(y_true, y_pred, smooth=1e-6): 
     y_pred = tf.nn.softmax(y_pred) 
@@ -153,6 +151,8 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     intersection = tf.keras.backend.sum(y_true_f * y_pred_f)
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
     return (2. * intersection + smooth) / (union + smooth)
+
+# Calculates the boundary_iou_loss
 
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
@@ -200,6 +200,24 @@ def boundary_iou_loss(y_true, y_pred):
 
     return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
+# Calculates the dice_loss
+
+def dice_loss(y_true, y_pred, smooth=1e-6):
+    y_true_f = tf.reshape(y_true, [-1])  
+    y_pred_f = tf.reshape(y_pred, [-1])  
+    
+    intersection = tf.reduce_sum(y_true_f * y_pred_f)
+    denominator = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f)
+    
+    dice_coeff = (2.0 * intersection + smooth) / (denominator + smooth)
+    return 1.0 - dice_coeff
+
+# Calculates the binary_cross_loss
+
+def binary_crossentropy_loss(y_true, y_pred):
+    bce = tf.keras.losses.BinaryCrossentropy()
+    return bce(y_true, y_pred)
+
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
@@ -214,10 +232,15 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss  # You can change the weights
+    dice = dice_loss(y_true, y_pred)
+    
+    bce = binary_crossentropy_loss(y_true, y_pred)
+
+    total_loss = 0.25 * scce_loss + 0.25 * bdy_loss + 0.25 * dice + 0.25 * bce
     return total_loss
 
 # Define the ReduceLROnPlateau callback
+
 reduce_lr = ReduceLROnPlateau(
     monitor='val_loss',   # Monitor validation loss
     factor=0.5,           # Factor by which the learning rate will be reduced
