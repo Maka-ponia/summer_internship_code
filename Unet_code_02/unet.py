@@ -214,7 +214,6 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     
     return 1.0 - tf.reduce_mean(dice_coeff)
 
-
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
@@ -240,7 +239,7 @@ reduce_lr = ReduceLROnPlateau(
     monitor='val_loss',   # Monitor validation loss
     factor=0.5,           # Factor by which the learning rate will be reduced
     patience=5,           # Number of epochs with no improvement before reducing
-    min_lr=1e-1           # Lower bound for the learning rate
+    min_lr=1e-8           # Lower bound for the learning rate
 )
 
 # Builds the actually model that the image is put through   
