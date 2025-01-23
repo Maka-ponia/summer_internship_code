@@ -11,7 +11,7 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 
 # Check and configure GPUs
 
@@ -226,11 +226,13 @@ def combined_loss(y_true, y_pred):
     
     bdy_loss = boundary_iou_loss(y_true, y_pred)
     
-    # Combine the two losses (adjust the weights if necessary)
+    # Calculates the dice loss
     
     dice = dice_loss(y_true, y_pred)
     
-    total_loss = 0.33 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
+    # Combine the two losses (adjust the weights if necessary)
+    
+    total_loss = 0.4 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
@@ -297,7 +299,7 @@ model.compile(optimizer='adam',
 
 # Trains the model Specify GPU being used by wtf.device context manager
 
-with tf.device('/GPU:3'):
+with tf.device('/GPU:2'):
     EPOCHS = 30
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
