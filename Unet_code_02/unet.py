@@ -203,14 +203,17 @@ def boundary_iou_loss(y_true, y_pred):
 # Calculates the dice_loss
 
 def dice_loss(y_true, y_pred, smooth=1e-6):
-    y_true_f = tf.reshape(y_true, [-1])  
-    y_pred_f = tf.reshape(y_pred, [-1])  
+    y_true = tf.one_hot(tf.cast(y_true, tf.int32), depth=tf.shape(y_pred)[-1])
     
-    intersection = tf.reduce_sum(y_true_f * y_pred_f)
-    denominator = tf.reduce_sum(y_true_f) + tf.reduce_sum(y_pred_f)
+    y_true_f = tf.reshape(y_true, [-1, tf.shape(y_pred)[-1]])  
+    y_pred_f = tf.reshape(y_pred, [-1, tf.shape(y_pred)[-1]])  
     
+    intersection = tf.reduce_sum(y_true_f * y_pred_f, axis=0)
+    denominator = tf.reduce_sum(y_true_f, axis=0) + tf.reduce_sum(y_pred_f, axis=0)
     dice_coeff = (2.0 * intersection + smooth) / (denominator + smooth)
-    return 1.0 - dice_coeff
+    
+    return 1.0 - tf.reduce_mean(dice_coeff)
+
 
 # Defines combined loss function (sparse categorical + boundary IoU)
 
