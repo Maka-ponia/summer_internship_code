@@ -62,25 +62,18 @@ def load_train_images(sample):
         if tf.random.uniform(()) > 0.5:
             input_image = tf.image.rot90(input_image)
             input_mask = tf.image.rot90(input_mask)
-        
-        if tf.random.uniform(()) > 0.5:
-            scales = [0.8, 1.0, 1.2]
-            scale = tf.random.shuffle(scales)[0]
-            new_size = tf.cast(scale * tf.shape(input_image)[:2], tf.int32)
-            input_image = tf.image.resize(input_image, new_size)
-            input_mask = tf.image.resize(input_mask, new_size, method="nearest")
-            input_image = tf.image.resize_with_crop_or_pad(input_image, 128, 128)
-            input_mask = tf.image.resize_with_crop_or_pad(input_mask, 128, 128)
 
-        
+        if tf.random.uniform(()) > 0.5:
+            input_image = tf.image.rot90(input_image)
+            input_mask = tf.image.rot90(input_mask)
+
         # Normalize images and masks
         
         input_image, input_mask = normalize(input_image, input_mask)
         return input_image, input_mask
     except Exception as e:
         print(f"Skipping corrupted file during training data loading: {e}")
-        return tf.zeros([128, 128, 3], dtype=tf.float32), tf.zeros([128, 128, 1], dtype=tf.float32)
-
+        return None
 
 def load_test_images(sample):
     
@@ -96,17 +89,15 @@ def load_test_images(sample):
         return input_image, input_mask
     except Exception as e:
         print(f"Skipping corrupted file during testing data loading: {e}")
-        return tf.zeros([128, 128, 3], dtype=tf.float32), tf.zeros([128, 128, 1], dtype=tf.float32)
- 
+        return None  
+    
     # Return None for invalid files
 
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
 train_dataset = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset = train_dataset.filter(lambda image, mask: tf.reduce_all(tf.shape(image) > 0) and tf.reduce_all(tf.shape(mask) > 0))
 test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = test_dataset.filter(lambda image, mask: tf.reduce_all(tf.shape(image) > 0) and tf.reduce_all(tf.shape(mask) > 0))
 
 # Establishes that 64 examples from the dataset will be 
 # proccessed at a time during training or testing. Establishes 
