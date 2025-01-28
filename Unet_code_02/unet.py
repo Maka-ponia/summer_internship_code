@@ -11,7 +11,7 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 
-os.environ["CUDA_VISIBLE_DEVICES"]="p"
+os.environ["CUDA_VISIBLE_DEVICES"]="8"
 
 # Check and configure GPUs
 
@@ -92,9 +92,9 @@ def augment_contrast(sample):
 
 # Augments the dataset by resizing 
 
-def augment_resize(sample):
-    input_image = tf.image.resize(sample['image'], (256, 256))
-    input_mask = tf.image.resize(sample['segmentation_mask'], (256, 256))
+def augment_random_brightness(sample):
+    image = tf.image.random_brightness(sample['image'], max_delta=0.1)  # Adjust brightness by up to 10%
+    input_mask = sample['segmentation_mask']  # Contrast does not affect the mask
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
@@ -336,7 +336,7 @@ model.compile(optimizer='adam',
 
 # Trains the model Specify GPU being used by wtf.device context manager
 
-with tf.device('/GPU:0'):
+with tf.device('/GPU:8'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
