@@ -93,7 +93,7 @@ def augment_contrast(sample):
 # Augments the dataset by resizing 
 
 def augment_random_brightness(sample):
-    image = tf.image.random_brightness(sample['image'], max_delta=0.1)  # Adjust brightness by up to 10%
+    input_image = tf.image.random_brightness(sample['image'], max_delta=0.1)  # Adjust brightness by up to 10%
     input_mask = sample['segmentation_mask']  # Contrast does not affect the mask
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
