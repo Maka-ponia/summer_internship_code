@@ -106,6 +106,20 @@ def augment_horizontal_flip(sample):
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
+# Augment the random rotation 
+
+def augment_random_rotation(image, label, max_angle=30):
+    angle = tf.random.uniform([], -max_angle, max_angle, dtype=tf.float32)
+    image = tfa.image.rotate(image, angle)
+    return image, label
+
+# Augment the random saturation 
+
+def augment_random_saturation(image, label, lower=0.5, upper=1.5):
+    image = tf.image.random_saturation(image, lower, upper)
+    return image, label
+
+
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
@@ -118,6 +132,9 @@ train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_c
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
 
 # Combine all datasets into one
 
@@ -125,6 +142,10 @@ train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
+
+
 
 def resize_images(image, mask, target_size=(128, 128)):
     image = tf.image.resize(image, target_size)
