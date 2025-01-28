@@ -112,21 +112,35 @@ def augment_horizontal_flip(sample):
 def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     
     # Extract the image and mask from the sample dictionary
+    
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
-    
-    # Convert the image to a numpy array for Gaussian filter
-    input_image_np = input_image.numpy()  # Convert to numpy array for scipy
-    input_mask_np = input_mask.numpy()    # Convert mask to numpy (if necessary)
 
-    # Apply Gaussian blur using scipy
-    input_image_blurred = scipy.ndimage.gaussian_filter(input_image_np, sigma=sigma)
+    # Create a Gaussian kernel using TensorFlow
+    def gaussian_kernel(kernel_size, sigma):
+        # Create a 1D Gaussian kernel
+        x = tf.range(kernel_size) - kernel_size // 2
+        x = tf.cast(x, tf.float32)
+        kernel_1d = tf.exp(-(x ** 2) / (2 * sigma ** 2))
+        kernel_1d = kernel_1d / tf.reduce_sum(kernel_1d)  # Normalize the kernel
 
-    # Convert the blurred image back to tensor
-    input_image = tf.convert_to_tensor(input_image_blurred, dtype=tf.float32)
+        # Create a 2D Gaussian kernel by outer product of the 1D kernel with itself
+        kernel_2d = tf.outer(kernel_1d, kernel_1d)
+        return kernel_2d
+
+    # Generate the Gaussian kernel
+    kernel = gaussian_kernel(kernel_size, sigma)
+
+    # Apply Gaussian blur using convolution with the kernel
+    input_image_blurred = tf.nn.conv2d(
+        input_image[tf.newaxis, ...],  # Add batch dimension
+        kernel[..., tf.newaxis, tf.newaxis],  # Add channel dimension to kernel
+        strides=[1, 1, 1, 1],  # No stride (1x1)
+        padding='SAME'
+    )[0]  # Remove batch dimension
 
     # Optionally normalize the image (if needed)
-    input_image, input_mask = normalize(input_image, input_mask)
+    input_image, input_mask = normalize(input_image_blurred, input_mask)
 
     # Return the blurred image and mask
     return input_image, input_mask
