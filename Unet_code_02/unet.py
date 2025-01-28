@@ -10,6 +10,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
+import scipy.ndimage
 
 os.environ["CUDA_VISIBLE_DEVICES"]="8"
 
@@ -111,34 +112,23 @@ def augment_horizontal_flip(sample):
 def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     
     # Extract the image and mask from the sample dictionary
-    
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
-
-    # Create the Gaussian blur kernel
     
-    kernel = tf.expand_dims(
-        tf.signal.gaussian(kernel_size, stddev=sigma),
-        axis=-1
-    )
-    kernel = tf.expand_dims(kernel, axis=-1)  # Shape: (kernel_size, kernel_size, 1, 1)
-    kernel_2d = tf.linalg.matmul(kernel, kernel, transpose_b=True)  # Create 2D kernel
-    kernel_2d = tf.expand_dims(kernel_2d, axis=-1)  # Expand for depth channels
-    kernel_2d = tf.repeat(kernel_2d, repeats=input_image.shape[-1], axis=-1)  # Match image depth
+    # Convert the image to a numpy array for Gaussian filter
+    input_image_np = input_image.numpy()  # Convert to numpy array for scipy
+    input_mask_np = input_mask.numpy()    # Convert mask to numpy (if necessary)
 
-    # Apply Gaussian blur to the image
-    input_image = tf.nn.depthwise_conv2d(
-        tf.expand_dims(input_image, axis=0),  # Add batch dimension
-        kernel_2d,
-        strides=[1, 1, 1, 1],
-        padding='SAME'
-    )
-    input_image = tf.squeeze(input_image, axis=0)  # Remove batch dimension
+    # Apply Gaussian blur using scipy
+    input_image_blurred = scipy.ndimage.gaussian_filter(input_image_np, sigma=sigma)
 
-    # Normalize the image and mask (if needed)
+    # Convert the blurred image back to tensor
+    input_image = tf.convert_to_tensor(input_image_blurred, dtype=tf.float32)
+
+    # Optionally normalize the image (if needed)
     input_image, input_mask = normalize(input_image, input_mask)
 
-    # Return the blurred image and unaltered mask
+    # Return the blurred image and mask
     return input_image, input_mask
 
 # Augment the random saturation 
