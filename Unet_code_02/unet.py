@@ -112,32 +112,28 @@ def augment_horizontal_flip(sample):
 def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
    
    # Extract the image and mask from the sample dictionary
-    
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
 
+    # Ensure the image is of the correct type (float32) before convolution
+    input_image = tf.cast(input_image, tf.float32)  # Convert to float32
+
     # Create a Gaussian kernel using TensorFlow
-    
     def gaussian_kernel(kernel_size, sigma):
-        
         # Create a 1D Gaussian kernel
-        
         x = tf.range(kernel_size) - kernel_size // 2
         x = tf.cast(x, tf.float32)
         kernel_1d = tf.exp(-(x ** 2) / (2 * sigma ** 2))
         kernel_1d = kernel_1d / tf.reduce_sum(kernel_1d)  # Normalize the kernel
 
         # Create a 2D Gaussian kernel using tensordot (outer product of 1D kernel with itself)
-        
         kernel_2d = tf.tensordot(kernel_1d, kernel_1d, axes=0)
         return kernel_2d
 
     # Generate the Gaussian kernel
-    
     kernel = gaussian_kernel(kernel_size, sigma)
 
     # Apply Gaussian blur using convolution with the kernel
-   
     input_image_blurred = tf.nn.conv2d(
         input_image[tf.newaxis, ...],  # Add batch dimension
         kernel[..., tf.newaxis, tf.newaxis],  # Add channel dimension to kernel
@@ -146,10 +142,10 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     )[0]  # Remove batch dimension
 
     # Optionally normalize the image (if needed)
-    
     input_image, input_mask = normalize(input_image_blurred, input_mask)
 
     # Return the blurred image and mask
+    return input_image, input_mask
     
     return input_image, input_mask
 
