@@ -25,43 +25,40 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
-
-def check_image_is_corrupted(image):
+def is_corrupt(image):
     try:
-        # Try to decode the image (check if it's a valid image)
-        _ = tf.image.decode_jpeg(image)
+        # Try to decode the image, and if it fails, it will raise an error.
+        tf.image.decode_jpeg(image)
         return False
-    except errors.InvalidArgumentError:
-        # If decoding fails, the image is corrupt
+    except tf.errors.InvalidArgumentError:
         return True
 
-def check_mask_is_corrupted(mask):
-    # Assuming that valid masks are integers and are not empty
-    if mask.shape.rank != 3 or mask.dtype != tf.int32:
-        return True
-    return False
-
-def filter_corrupted_samples(dataset):
+def filter_corrupted_samples(sample):
     def filter_fn(sample):
-        # Extract image and mask from the sample
+        # Get the image and mask from the sample
         image = sample['image']
         mask = sample['segmentation_mask']
         
-        # Check if either the image or the mask is corrupted
-        if check_image_is_corrupted(image) or check_mask_is_corrupted(mask):
-            return False  # Skip this pair of image and mask
-        else:
-            return True  # Include this pair of image and mask
-    
-    # Apply the filter function to the dataset
+        # Check if the image is corrupted
+        if is_corrupt(image.numpy()):
+            return False
+        
+        # Check if the mask is corrupted
+        if is_corrupt(mask.numpy()):
+            return False
+        
+        return True
+
+    # Apply the filter function to the entire dataset
     filtered_dataset = dataset.filter(filter_fn)
-    
     return filtered_dataset
 
-# Apply the filtering function to the training dataset
-dataset = filter_corrupted_samples(dataset)
-info = filter_corrupted_samples(info)
+# Load the dataset
+dataset, info = tfds.load('oxford_iiit_pet', with_info=True)
+
+# Filter out corrupted samples from the train split
+train_dataset = dataset['train']
+train_dataset = filter_corrupted_samples(train_dataset)
 
 # Preprocessing Steps
 
