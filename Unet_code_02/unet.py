@@ -25,6 +25,16 @@ if gpus:
 
 dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
+# Function to check for corrupted images
+
+def is_valid_image(image, label):
+    try:
+        # Attempt to decode the image
+        tf.image.decode_jpeg(image)
+        return True  # Image is valid
+    except tf.errors.InvalidArgumentError:
+        return False  # Corrupt image
+
 # Preprocessing Steps
 
 def normalize(input_image, input_mask):
@@ -106,12 +116,16 @@ def augment_horizontal_flip(sample):
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
-
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-train_dataset_original = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+# Filter the dataset to remove corrupt images
+
+train_dataset = dataset.filter(is_valid_image)
+test_dataset = dataset.filter(is_valid_image)
+
+train_dataset_original = train_dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = test_dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Augmented datasets
 
@@ -274,7 +288,7 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.4 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
+    total_loss = 0.33 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
@@ -283,7 +297,7 @@ reduce_lr = ReduceLROnPlateau(
     monitor='val_loss',   # Monitor validation loss
     factor=0.5,           # Factor by which the learning rate will be reduced
     patience=5,           # Number of epochs with no improvement before reducing
-    min_lr=1e-8           # Lower bound for the learning rate
+    min_lr=1e-10           # Lower bound for the learning rate
 )
 
 # Builds the actually model that the image is put through   
