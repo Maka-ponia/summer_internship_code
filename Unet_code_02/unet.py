@@ -157,8 +157,8 @@ train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_c
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+# train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+# train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 
 # Combine all datasets into one
@@ -167,9 +167,8 @@ train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
-train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
-train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
-
+# train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
+# train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
 
 
 def resize_images(image, mask, target_size=(128, 128)):
