@@ -127,6 +127,11 @@ train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contra
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
 
+def resize_images(image, mask, target_size=(128, 128)):
+    image = tf.image.resize(image, target_size)
+    mask = tf.image.resize(mask, target_size)
+    return image, mask
+
 # Establishes that 64 examples from the dataset will be 
 # proccessed at a time during training or testing. Establishes 
 # that 1000 datapoints will be stored to be shuffled 
@@ -136,7 +141,7 @@ BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
-
+train_dataset_combined = train_dataset_combined.map(resize_images)
 train_dataset_combined = train_dataset_combined.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
 train_dataset_combined = train_dataset_combined.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
