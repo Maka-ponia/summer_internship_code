@@ -11,6 +11,8 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 import scipy.ndimage
+from tensorflow import errors
+
 
 os.environ["CUDA_VISIBLE_DEVICES"]="8"
 
@@ -25,6 +27,33 @@ if gpus:
         print(e)
 
 dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
+
+def check_image_is_corrupted(image):
+    try:
+        # Try to decode the image
+        _ = tf.image.decode_jpeg(image)
+        return False
+    except errors.InvalidArgumentError:
+        # If decoding fails, the image is corrupt
+        return True
+
+def filter_corrupted_images(dataset):
+    def filter_fn(sample):
+        # Get the image from the sample
+        image = sample['image']
+        # Check if the image is corrupted
+        if check_image_is_corrupted(image):
+            return False  # Skip this image
+        else:
+            return True  # Include this image
+    
+    # Apply the filter function to the dataset
+    filtered_dataset = dataset.filter(filter_fn)
+    
+    return filtered_dataset
+
+# Filter the training dataset to remove corrupted images
+dataset = filter_corrupted_images(dataset)
 
 # Preprocessing Steps
 
@@ -121,7 +150,6 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     # Return the image (you can add normalization if needed)
     return input_image, input_mask
     
-
 # Augment the random saturation 
 
 def augment_random_saturation(sample, lower=0.5, upper=1.5):
@@ -138,8 +166,6 @@ def augment_random_saturation(sample, lower=0.5, upper=1.5):
     
     # Return the augmented image and its corresponding mask
     return input_image, input_mask
-
-
 
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
