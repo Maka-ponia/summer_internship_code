@@ -33,6 +33,7 @@ def is_corrupt(image):
     except tf.errors.InvalidArgumentError:
         return True
 
+# Function to filter corrupted samples from the dataset
 def filter_corrupted_samples(dataset):
     def filter_fn(sample):
         # Get the image and mask from the sample
@@ -40,16 +41,13 @@ def filter_corrupted_samples(dataset):
         mask = sample['segmentation_mask']
         
         # Check if the image is corrupted
-        if is_corrupt(image.numpy()):
-            return False
+        image_corrupted = tf.py_function(is_corrupt, [image], tf.bool)
+        mask_corrupted = tf.py_function(is_corrupt, [mask], tf.bool)
         
-        # Check if the mask is corrupted
-        if is_corrupt(mask.numpy()):
-            return False
-        
-        return True
+        # Filter the dataset based on whether the image or mask is corrupted
+        return tf.logical_not(image_corrupted) & tf.logical_not(mask_corrupted)
 
-    # Apply the filter function to the entire dataset
+    # Apply the filter function to the dataset
     filtered_dataset = dataset.filter(filter_fn)
     return filtered_dataset
 
