@@ -108,16 +108,41 @@ def augment_horizontal_flip(sample):
 
 # Augment the random rotation 
 
-def augment_random_rotation(image, label, max_angle=30):
+def augment_random_rotation(sample, max_angle=30):
+    # Extract the image and mask from the sample dictionary
+    input_image = sample['image']
+    input_mask = sample['segmentation_mask']
+    
+    # Rotate the image by a random angle
     angle = tf.random.uniform([], -max_angle, max_angle, dtype=tf.float32)
-    image = tfa.image.rotate(image, angle)
-    return image, label
+    input_image = tfa.image.rotate(input_image, angle)
+    
+    # Rotate the segmentation mask similarly
+    input_mask = tfa.image.rotate(input_mask, angle)
+    
+    # Normalize the image and mask (optional)
+    input_image, input_mask = normalize(input_image, input_mask)
+    
+    # Return the rotated image and mask
+    return input_image, input_mask
 
 # Augment the random saturation 
 
-def augment_random_saturation(image, label, lower=0.5, upper=1.5):
-    image = tf.image.random_saturation(image, lower, upper)
-    return image, label
+def augment_random_saturation(sample, lower=0.5, upper=1.5):
+    # Extract the image and mask from the sample dictionary
+    input_image = sample['image']
+    input_mask = sample['segmentation_mask']
+    
+    # Apply random saturation to the image
+    input_image = tf.image.random_saturation(input_image, lower, upper)
+    
+    # No need to modify the segmentation mask, it's only the image that gets augmented
+    # Normalize if necessary
+    input_image, input_mask = normalize(input_image, input_mask)
+    
+    # Return the augmented image and its corresponding mask
+    return input_image, input_mask
+
 
 
 # Itterates through the dataset and applies the load functions two each data point, 
