@@ -27,10 +27,9 @@ dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
 # Function to check for corrupted images
 
-def is_valid_image(image):
+def is_valid_image(image, label):
     try:
-        # Attempt to decode the image
-        tf.image.decode_jpeg(image)
+        tf.image.decode_jpeg(image)  # Decode to check validity
         return True  # Image is valid
     except tf.errors.InvalidArgumentError:
         return False  # Corrupt image
@@ -121,18 +120,18 @@ def augment_horizontal_flip(sample):
 
 # Filter the dataset to remove corrupt images
 
-train_dataset = dataset['train'].filter(is_valid_image)
-test_dataset = dataset['test'].filter(is_valid_image)
+train_dataset = dataset['train'].filter(lambda x: is_valid_image(x['image'], x['label']))
+test_dataset = dataset['test'].filter(lambda x: is_valid_image(x['image'], x['label']))
 
-train_dataset_original = train_dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = test_dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_original = train_dataset.map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = test_dataset.map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Augmented datasets
 
-train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_vflip = dataset.map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_contrast = dataset.map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = dataset.map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_hflip = dataset.map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
 
