@@ -33,7 +33,7 @@ def is_corrupt(image):
     except tf.errors.InvalidArgumentError:
         return True
 
-def filter_corrupted_samples(sample):
+def filter_corrupted_samples(dataset):
     def filter_fn(sample):
         # Get the image and mask from the sample
         image = sample['image']
@@ -58,7 +58,7 @@ dataset, info = tfds.load('oxford_iiit_pet', with_info=True)
 
 # Filter out corrupted samples from the train split
 train_dataset = dataset['train']
-train_dataset = filter_corrupted_samples(train_dataset)
+dataset = filter_corrupted_samples(train_dataset)
 
 # Preprocessing Steps
 
