@@ -56,7 +56,7 @@ dataset, info = tfds.load('oxford_iiit_pet', with_info=True)
 
 # Filter out corrupted samples from the train split
 train_dataset = dataset['train']
-dataset = filter_corrupted_samples(train_dataset)
+train_dataset = filter_corrupted_samples(train_dataset)
 
 # Preprocessing Steps
 
@@ -173,17 +173,17 @@ def augment_random_saturation(sample, lower=0.5, upper=1.5):
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-train_dataset_original = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_original = train_dataset.map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = train_dataset.map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Augmented datasets
 
-train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_gblur = dataset['train'].map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_vflip = train_dataset.map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_contrast = train_dataset.map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = train_dataset.map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_hflip = train_dataset.map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_gblur = train_dataset.map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rsaturate = train_dataset.map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
 
