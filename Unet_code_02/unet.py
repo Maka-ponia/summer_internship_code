@@ -117,7 +117,7 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 
 train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = dataset['train'].map(augment_resize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
