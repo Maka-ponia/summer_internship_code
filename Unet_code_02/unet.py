@@ -27,9 +27,11 @@ dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
 # Function to check for corrupted images
 
-def is_valid_image(image, label):
+def is_valid_image(x, label):
+    image = x['image']  # Extract the image
     try:
-        tf.image.decode_jpeg(image)  # Decode to check validity
+        # Check if the image is a valid tensor by checking its shape
+        tf.ensure_shape(image, [None, None, 3])  # Validate that the image is 3-channel RGB
         return True  # Image is valid
     except tf.errors.InvalidArgumentError:
         return False  # Corrupt image
