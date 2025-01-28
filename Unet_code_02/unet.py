@@ -106,30 +106,39 @@ def augment_horizontal_flip(sample):
     input_image, input_mask = normalize(input_image, input_mask)
     return input_image, input_mask
 
-# Augment the random rotation 
+# Augment the gaussian blur 
 
-def augment_random_rotation(sample, max_angle=30):
+def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
+    
     # Extract the image and mask from the sample dictionary
+    
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
+
+    # Create the Gaussian blur kernel
     
-    # Get the original shape of the image and mask
-    original_shape = tf.shape(input_image)
-    
-    # Rotate the image by a random angle (convert degrees to radians)
-    angle = tf.random.uniform([], -max_angle, max_angle, dtype=tf.float32)
-    angle_in_radians = angle * tf.constant(3.14159265359 / 180, dtype=tf.float32)  # Convert to radians
-    input_image = tfa.image.rotate(input_image, angle_in_radians)
-    input_mask = tfa.image.rotate(input_mask, angle_in_radians)
-    
-    # Center crop the rotated image and mask back to the original shape
-    input_image = tf.image.resize_with_crop_or_pad(input_image, original_shape[0], original_shape[1])
-    input_mask = tf.image.resize_with_crop_or_pad(input_mask, original_shape[0], original_shape[1])
-    
-    # Normalize the image and mask (optional)
+    kernel = tf.expand_dims(
+        tf.signal.gaussian(kernel_size, stddev=sigma),
+        axis=-1
+    )
+    kernel = tf.expand_dims(kernel, axis=-1)  # Shape: (kernel_size, kernel_size, 1, 1)
+    kernel_2d = tf.linalg.matmul(kernel, kernel, transpose_b=True)  # Create 2D kernel
+    kernel_2d = tf.expand_dims(kernel_2d, axis=-1)  # Expand for depth channels
+    kernel_2d = tf.repeat(kernel_2d, repeats=input_image.shape[-1], axis=-1)  # Match image depth
+
+    # Apply Gaussian blur to the image
+    input_image = tf.nn.depthwise_conv2d(
+        tf.expand_dims(input_image, axis=0),  # Add batch dimension
+        kernel_2d,
+        strides=[1, 1, 1, 1],
+        padding='SAME'
+    )
+    input_image = tf.squeeze(input_image, axis=0)  # Remove batch dimension
+
+    # Normalize the image and mask (if needed)
     input_image, input_mask = normalize(input_image, input_mask)
-    
-    # Return the rotated image and mask
+
+    # Return the blurred image and unaltered mask
     return input_image, input_mask
 
 # Augment the random saturation 
@@ -163,7 +172,7 @@ train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_c
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_gnoise = dataset['train'].map(augment_gaussian_noise, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
@@ -172,7 +181,7 @@ train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
-train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_gnoise)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
 
 
