@@ -113,12 +113,18 @@ def augment_random_rotation(sample, max_angle=30):
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
     
-    # Rotate the image by a random angle
-    angle = tf.random.uniform([], -max_angle, max_angle, dtype=tf.float32)
-    input_image = tfa.image.rotate(input_image, angle)
+    # Get the original shape of the image and mask
+    original_shape = tf.shape(input_image)
     
-    # Rotate the segmentation mask similarly
-    input_mask = tfa.image.rotate(input_mask, angle)
+    # Rotate the image by a random angle (convert degrees to radians)
+    angle = tf.random.uniform([], -max_angle, max_angle, dtype=tf.float32)
+    angle_in_radians = angle * tf.constant(3.14159265359 / 180, dtype=tf.float32)  # Convert to radians
+    input_image = tfa.image.rotate(input_image, angle_in_radians)
+    input_mask = tfa.image.rotate(input_mask, angle_in_radians)
+    
+    # Center crop the rotated image and mask back to the original shape
+    input_image = tf.image.resize_with_crop_or_pad(input_image, original_shape[0], original_shape[1])
+    input_mask = tf.image.resize_with_crop_or_pad(input_mask, original_shape[0], original_shape[1])
     
     # Normalize the image and mask (optional)
     input_image, input_mask = normalize(input_image, input_mask)
@@ -157,7 +163,7 @@ train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_c
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-# train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rrotate = dataset['train'].map(augment_random_rotation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
@@ -166,7 +172,7 @@ train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
-# train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rrotate)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
 
 
