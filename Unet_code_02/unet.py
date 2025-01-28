@@ -11,7 +11,7 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="p"
 
 # Check and configure GPUs
 
@@ -47,26 +47,6 @@ def load_train_images(sample):
         input_image = tf.image.resize(sample['image'], (128, 128))
         input_mask = tf.image.resize(sample['segmentation_mask'], (128, 128))
         
-        # Additional data augmentation (e.g., rotation, brightness adjustment, random horizontal flip)
-        
-        if tf.random.uniform(()) > 0.5:
-            input_image = tf.image.flip_left_right(input_image)
-            input_mask = tf.image.flip_left_right(input_mask)
-        
-        if tf.random.uniform(()) > 0.5:
-            input_image = tf.image.random_brightness(input_image, max_delta=0.2)
-        
-        if tf.random.uniform(()) > 0.5:
-            input_image = tf.image.random_contrast(input_image, lower=0.8, upper=1.2)
-            
-        if tf.random.uniform(()) > 0.5:
-            input_image = tf.image.rot90(input_image)
-            input_mask = tf.image.rot90(input_mask)
-
-        if tf.random.uniform(()) > 0.5:
-            input_image = tf.image.rot90(input_image)
-            input_mask = tf.image.rot90(input_mask)
-
         # Normalize images and masks
         
         input_image, input_mask = normalize(input_image, input_mask)
@@ -93,11 +73,58 @@ def load_test_images(sample):
     
     # Return None for invalid files
 
+# Augments the dataset vertically
+
+def augment_vertical_flip(sample):
+    input_image = tf.image.flip_up_down(sample['image'])
+    input_mask = tf.image.flip_up_down(sample['segmentation_mask'])
+    input_image, input_mask = normalize(input_image, input_mask)
+    return input_image, input_mask
+
+# Augments the dataset by using contrast
+
+def augment_contrast(sample):
+    input_image = tf.image.adjust_contrast(sample['image'], contrast_factor=2)
+    input_mask = sample['segmentation_mask']  # Contrast does not affect the mask
+    input_image, input_mask = normalize(input_image, input_mask)
+    return input_image, input_mask
+
+# Augments the dataset by resizing 
+
+def augment_resize(sample):
+    input_image = tf.image.resize(sample['image'], (256, 256))
+    input_mask = tf.image.resize(sample['segmentation_mask'], (256, 256))
+    input_image, input_mask = normalize(input_image, input_mask)
+    return input_image, input_mask
+
+# Augments the dataset horizontally 
+
+def augment_horizontal_flip(sample):
+    input_image = tf.image.flip_left_right(sample['image'])
+    input_mask = tf.image.flip_left_right(sample['segmentation_mask'])
+    input_image, input_mask = normalize(input_image, input_mask)
+    return input_image, input_mask
+
+
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-train_dataset = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_original = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+# Augmented datasets
+
+train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = dataset['train'].map(augment_resize, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+# Combine all datasets into one
+
+train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
 
 # Establishes that 64 examples from the dataset will be 
 # proccessed at a time during training or testing. Establishes 
@@ -109,11 +136,12 @@ BUFFER_SIZE = 1000
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
 
-train_dataset = train_dataset.cache().shuffle(BATCH_SIZE).batch(BATCH_SIZE).repeat()    
-train_dataset = train_dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+train_dataset_combined = train_dataset_combined.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
+train_dataset_combined = train_dataset_combined.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
 test_dataset = test_dataset.batch(BATCH_SIZE)
 
-# explanatory Data Analysis
+# Prints sample
 
 def display_sample(image_list, save_path="output", num=0):
     plt.figure(figsize=(10, 10))
@@ -130,7 +158,7 @@ def display_sample(image_list, save_path="output", num=0):
     plt.savefig(f"{save_path}{num}.png")
     plt.close()
         
-#Defines the parts of the unet model 
+# Defines the parts of the unet model 
 
 def double_conv_block(x, n_filters):
     x = layers.Conv2D(n_filters, 3, padding ='same', activation = 'relu', kernel_initializer = 'he_normal')(x)  
@@ -307,11 +335,11 @@ model.compile(optimizer='adam',
 
 # Trains the model Specify GPU being used by wtf.device context manager
 
-with tf.device('/GPU:2'):
+with tf.device('/GPU:0'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
-    history = model.fit(train_dataset, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset, callbacks=[reduce_lr])
+    history = model.fit(train_dataset_combined, epochs=EPOCHS, steps_per_epoch=steps_per_epoch, validation_steps=validation_steps, validation_data=test_dataset, callbacks=[reduce_lr])
 
 # Takes a tensor and then apples the labels based on the values in the tensor to create the masks
 
