@@ -54,6 +54,10 @@ def filter_corrupted_samples(dataset):
 # Load the dataset
 dataset, info = tfds.load('oxford_iiit_pet', with_info=True)
 
+# Filter out corrupted samples from the train split
+train_dataset = dataset['train']
+dataset = filter_corrupted_samples(train_dataset)
+
 # Preprocessing Steps
 
 def normalize(input_image, input_mask):
@@ -190,6 +194,7 @@ train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_gblur)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
 
+
 def resize_images(image, mask, target_size=(128, 128)):
     image = tf.image.resize(image, target_size)
     mask = tf.image.resize(mask, target_size)
@@ -202,10 +207,8 @@ def resize_images(image, mask, target_size=(128, 128)):
 BATCH_SIZE = 16
 BUFFER_SIZE = 1000
 
-# Filter out corrupted samples from the train split
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
-train_dataset_combined = filter_corrupted_samples(train_dataset_combined)
 train_dataset_combined = train_dataset_combined.map(resize_images)
 train_dataset_combined = train_dataset_combined.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
 train_dataset_combined = train_dataset_combined.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
