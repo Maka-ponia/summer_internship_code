@@ -12,7 +12,6 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 from tensorflow import errors
 
-
 os.environ["CUDA_VISIBLE_DEVICES"]="8"
 
 # Check and configure GPUs
@@ -26,12 +25,10 @@ if gpus:
         print(e)
 
 def is_corrupt(image):
-    try:
-        # Try to decode the image, and if it fails, it will raise an error.
-        tf.image.decode_jpeg(image)
-        return False
-    except tf.errors.InvalidArgumentError:
-        return True
+    # Check if image is valid by checking its shape
+    shape = tf.shape(image)
+    # Image should have height, width > 0 and 3 channels (for RGB)
+    return tf.reduce_any(tf.equal(shape, [0, 0, 3]))  # Corrupt if shape is (0, 0, 3)
 
 # Function to filter corrupted samples from the dataset
 def filter_corrupted_samples(dataset):
