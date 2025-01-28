@@ -109,11 +109,14 @@ def augment_horizontal_flip(sample):
 
 # Augment the gaussian blur 
 
-def augment_gaussian_blur(sample):
-    input_image = tfa.image.gaussian_filter2d(sample['image'], kernel_size=5, sigma=1.0)
-    input_mask = sample['segmentation_mask']  # Contrast does not affect the mask
-   
-    return input_image, input_mask
+def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
+    input_image = sample['image']
+    
+    # Apply Gaussian blur
+    input_image = tfa.image.gaussian_filter2d(input_image, filter_size=kernel_size, sigma=sigma)
+    
+    # Return the image (you can add normalization if needed)
+    return input_image, sample['segmentation_mask']
     
 
 # Augment the random saturation 
