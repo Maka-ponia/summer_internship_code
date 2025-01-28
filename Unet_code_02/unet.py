@@ -119,10 +119,9 @@ def augment_horizontal_flip(sample):
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-# Filter the dataset to remove corrupt images
-
-train_dataset = dataset['train'].filter(is_valid_image)
-test_dataset = dataset['test'].filter(is_valid_image)
+# Filter the datasets to remove corrupt images
+train_dataset = dataset.filter(lambda image, label: is_valid_image(image, label))
+test_dataset = dataset.filter(lambda image, label: is_valid_image(image, label))
 
 train_dataset_original = train_dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
