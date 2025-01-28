@@ -121,8 +121,8 @@ def augment_horizontal_flip(sample):
 
 # Filter the dataset to remove corrupt images
 
-train_dataset = dataset.filter(is_valid_image)
-test_dataset = dataset.filter(is_valid_image)
+train_dataset = dataset['train'].filter(is_valid_image)
+test_dataset = dataset['test'].filter(is_valid_image)
 
 train_dataset_original = train_dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 test_dataset = test_dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
