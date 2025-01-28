@@ -111,7 +111,8 @@ def augment_horizontal_flip(sample):
 
 def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     input_image = sample['image']
-    
+    input_mask = sample['segmentation_mask']
+
     # Apply Gaussian blur
     input_image = tfa.image.gaussian_filter2d(input_image, kernel_size, sigma)
     
