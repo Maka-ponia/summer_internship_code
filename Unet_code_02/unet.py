@@ -10,7 +10,7 @@ import tensorflow.keras.backend as K
 from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
-from tensorflow import errors
+import scipy.ndimage
 
 os.environ["CUDA_VISIBLE_DEVICES"]="8"
 
@@ -24,36 +24,7 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-def is_corrupt(image):
-    # Check if image is valid by checking its shape
-    shape = tf.shape(image)
-    # Image should have height, width > 0 and 3 channels (for RGB)
-    return tf.reduce_any(tf.equal(shape, [0, 0, 3]))  # Corrupt if shape is (0, 0, 3)
-
-# Function to filter corrupted samples from the dataset
-def filter_corrupted_samples(dataset):
-    def filter_fn(sample):
-        # Get the image and mask from the sample
-        image = sample['image']
-        mask = sample['segmentation_mask']
-        
-        # Check if the image is corrupted
-        image_corrupted = tf.py_function(is_corrupt, [image], tf.bool)
-        mask_corrupted = tf.py_function(is_corrupt, [mask], tf.bool)
-        
-        # Filter the dataset based on whether the image or mask is corrupted
-        return tf.logical_not(image_corrupted) & tf.logical_not(mask_corrupted)
-
-    # Apply the filter function to the dataset
-    filtered_dataset = dataset.filter(filter_fn)
-    return filtered_dataset
-
-# Load the dataset
-dataset, info = tfds.load('oxford_iiit_pet', with_info=True)
-
-# Filter out corrupted samples from the train split
-train_dataset = dataset['train']
-train_dataset = filter_corrupted_samples(train_dataset)
+dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
 # Preprocessing Steps
 
@@ -150,6 +121,7 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     # Return the image (you can add normalization if needed)
     return input_image, input_mask
     
+
 # Augment the random saturation 
 
 def augment_random_saturation(sample, lower=0.5, upper=1.5):
@@ -167,20 +139,22 @@ def augment_random_saturation(sample, lower=0.5, upper=1.5):
     # Return the augmented image and its corresponding mask
     return input_image, input_mask
 
+
+
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-train_dataset_original = train_dataset.map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = train_dataset.map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_original = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Augmented datasets
 
-train_dataset_vflip = train_dataset.map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_contrast = train_dataset.map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = train_dataset.map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_hflip = train_dataset.map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_gblur = train_dataset.map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_rsaturate = train_dataset.map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_gblur = dataset['train'].map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
 
