@@ -34,6 +34,7 @@ def normalize(input_image, input_mask):
     
     try:
         input_image = tf.cast(input_image, tf.float32) / 255.0
+        input_mask = tf.cast(input_mask, tf.float32)
         input_mask = input_mask - 1
         return input_image, input_mask
     except Exception as e:
