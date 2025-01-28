@@ -25,17 +25,6 @@ if gpus:
 
 dataset, info = tfds.load('oxford_iiit_pet', with_info = True)
 
-# Function to check for corrupted images
-
-def is_valid_image(x, label):
-    image = x['image']  # Extract the image
-    try:
-        # Check if the image is a valid tensor by checking its shape
-        tf.ensure_shape(image, [None, None, 3])  # Validate that the image is 3-channel RGB
-        return True  # Image is valid
-    except tf.errors.InvalidArgumentError:
-        return False  # Corrupt image
-
 # Preprocessing Steps
 
 def normalize(input_image, input_mask):
@@ -120,20 +109,15 @@ def augment_horizontal_flip(sample):
 # Itterates through the dataset and applies the load functions two each data point, 
 # which is then placed in another arary
 
-# Filter the dataset to remove corrupt images
-
-train_dataset = dataset['train'].filter(lambda x: is_valid_image(x['image'], x['label']))
-test_dataset = dataset['test'].filter(lambda x: is_valid_image(x['image'], x['label']))
-
-train_dataset_original = train_dataset.map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-test_dataset = test_dataset.map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_original = dataset['train'].map(load_train_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Augmented datasets
 
-train_dataset_vflip = dataset.map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_contrast = dataset.map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = dataset.map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_hflip = dataset.map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
 
@@ -289,7 +273,7 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.33 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
+    total_loss = 0.4 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
@@ -298,7 +282,7 @@ reduce_lr = ReduceLROnPlateau(
     monitor='val_loss',   # Monitor validation loss
     factor=0.5,           # Factor by which the learning rate will be reduced
     patience=5,           # Number of epochs with no improvement before reducing
-    min_lr=1e-10           # Lower bound for the learning rate
+    min_lr=1e-8           # Lower bound for the learning rate
 )
 
 # Builds the actually model that the image is put through   
