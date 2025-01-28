@@ -118,7 +118,7 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     input_image, input_mask = normalize(input_image, input_mask)
 
     # Return the image (you can add normalization if needed)
-    return input_image, sample['segmentation_mask']
+    return input_image, input_mask
     
 
 # Augment the random saturation 
