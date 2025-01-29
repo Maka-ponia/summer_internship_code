@@ -324,11 +324,11 @@ def combined_loss(y_true, y_pred):
     
     dice = dice_loss(y_true, y_pred)
     
-    tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
+    # tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
 
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice + 0.25 * tversky
+    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice 
     return total_loss
 
 # Define the ReduceLROnPlateau callback
