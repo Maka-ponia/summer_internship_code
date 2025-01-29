@@ -233,7 +233,7 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
     union = tf.keras.backend.sum(y_true_f) + tf.keras.backend.sum(y_pred_f)
     return (2. * intersection + smooth) / (union + smooth)
 
-# Calculates the boundary_iou_loss
+# Calculates boundary iou loss
 
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
@@ -313,7 +313,7 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.4 * scce_loss + 0.33 * bdy_loss + 0.33 * dice
+    total_loss = 1 * scce_loss + 0 * bdy_loss + 0 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
@@ -325,7 +325,7 @@ reduce_lr = ReduceLROnPlateau(
     min_lr=1e-8           # Lower bound for the learning rate
 )
 
-# Builds the actually model that the image is put through   
+# Builds the actually model that the image is put through
 
 def build_unet_model(output_channels):
     
