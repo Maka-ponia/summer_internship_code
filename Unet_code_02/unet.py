@@ -313,7 +313,7 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 1 * scce_loss + 0 * bdy_loss + 0 * dice
+    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice
     return total_loss
 
 # Define the ReduceLROnPlateau callback
