@@ -294,19 +294,24 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     
     return 1.0 - tf.reduce_mean(dice_coeff)
 
-def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3):
+def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
+    # Convert sparse labels to one-hot encoded
+    y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=tf.shape(y_pred)[-1])
+
     # Flatten the tensors
-    y_true_f = tf.reshape(y_true, [-1])
-    y_pred_f = tf.reshape(y_pred, [-1])
+    y_true_f = tf.reshape(y_true_onehot, [-1, tf.shape(y_pred)[-1]])  # Flatten for multi-class
+    y_pred_f = tf.reshape(y_pred, [-1, tf.shape(y_pred)[-1]])  # Flatten for multi-class
 
     # True positives, false positives, false negatives
-    true_pos = tf.reduce_sum(y_true_f * y_pred_f)
-    false_pos = tf.reduce_sum((1 - y_true_f) * y_pred_f)
-    false_neg = tf.reduce_sum(y_true_f * (1 - y_pred_f))
+    true_pos = tf.reduce_sum(y_true_f * y_pred_f, axis=0)
+    false_pos = tf.reduce_sum((1 - y_true_f) * y_pred_f, axis=0)
+    false_neg = tf.reduce_sum(y_true_f * (1 - y_pred_f), axis=0)
 
     # Tversky loss formula
-    tversky = (true_pos + 1e-6) / (true_pos + alpha * false_neg + beta * false_pos + 1e-6)
-    return 1 - tversky  # The loss is 1 - Tversky coefficient
+    tversky = (true_pos + smooth) / (true_pos + alpha * false_neg + beta * false_pos + smooth)
+    
+    return 1 - tf.reduce_mean(tversky)  # The loss is 1 minus Tversky coefficient
+
 
 # Defines combined loss function (sparse categorical + boundary IoU)
 
@@ -324,11 +329,11 @@ def combined_loss(y_true, y_pred):
     
     dice = dice_loss(y_true, y_pred)
     
-    # tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
+    tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
 
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice 
+    total_loss = 0.25 * scce_loss + 0.25 * bdy_loss + 0.25 * dice + 0.25 * tversky
     return total_loss
 
 # Define the ReduceLROnPlateau callback
