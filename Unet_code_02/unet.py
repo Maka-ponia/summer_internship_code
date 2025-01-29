@@ -11,8 +11,44 @@ from tensorflow.keras.losses import SparseCategoricalCrossentropy
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.callbacks import ReduceLROnPlateau
 import scipy.ndimage
+from tensorflow.keras.callbacks import Callback
 
-os.environ["CUDA_VISIBLE_DEVICES"]="8"
+os.environ["CUDA_VISIBLE_DEVICES"]="4"
+
+class CustomReduceLROnPlateau(Callback):
+    def __init__(self, monitor1='val_loss', monitor2='val_dice_coefficient', factor=0.5, patience=3, min_lr=1e-8):
+        super(CustomReduceLROnPlateau, self).__init__()
+        self.monitor1 = monitor1
+        self.monitor2 = monitor2
+        self.factor = factor
+        self.patience = patience
+        self.min_lr = min_lr
+        self.wait = 0
+        self.best_loss = float('inf')
+        self.best_metric = 0  # Assuming higher is better for a metric like Dice coefficient
+
+    def on_epoch_end(self, epoch, logs=None):
+        logs = logs or {}
+        loss = logs.get(self.monitor1)
+        metric = logs.get(self.monitor2)
+        current_lr = float(self.model.optimizer.lr.numpy())
+
+        if loss is None or metric is None:
+            return
+
+        # Check if both metrics are improving, if not, reduce LR
+        if loss < self.best_loss or metric > self.best_metric:
+            self.best_loss = min(loss, self.best_loss)
+            self.best_metric = max(metric, self.best_metric)
+            self.wait = 0  # Reset patience counter
+        else:
+            self.wait += 1  # Increase patience counter
+
+        if self.wait >= self.patience:
+            new_lr = max(current_lr * self.factor, self.min_lr)
+            print(f"\nEpoch {epoch + 1}: Reducing learning rate to {new_lr}.")
+            self.model.optimizer.lr.assign(new_lr)
+            self.wait = 0  # Reset patience counter
 
 # Check and configure GPUs
 
@@ -124,7 +160,9 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
 # Augment the random saturation 
 
 def augment_random_saturation(sample, lower=0.5, upper=1.5):
+    
     # Extract the image and mask from the sample dictionary
+    
     input_image = sample['image']
     input_mask = sample['segmentation_mask']
     
@@ -179,6 +217,7 @@ BUFFER_SIZE = 1000
 
 # stores the dataset in a cache after the first read, shuffles it and then stoes then in a batch by an amount repatatly 
 # Grabs data whil data is still being proccesed
+
 train_dataset_combined = train_dataset_combined.map(resize_images)
 train_dataset_combined = train_dataset_combined.cache().shuffle(BUFFER_SIZE).batch(BATCH_SIZE).repeat()
 train_dataset_combined = train_dataset_combined.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
@@ -235,9 +274,13 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
 # Calculates boundary iou loss
 
 def boundary_iou_loss(y_true, y_pred):
+    
     # Function to calculate the boundary of the mask (thin boundary).
+    
     def boundary(mask):
+        
         # Get the number of channels in the input (y_true or y_pred)
+        
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
         # Laplacian kernel for boundary detection (3x3)
@@ -268,14 +311,17 @@ def boundary_iou_loss(y_true, y_pred):
         return boundary
 
     # Compute the boundaries for both true and predicted masks
+    
     true_boundary = boundary(y_true)
     pred_boundary = boundary(y_pred)
 
     # Compute the intersection and union of the boundaries
+    
     intersection = K.sum(true_boundary * pred_boundary)
     union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
 
     # Compute Boundary IoU as intersection over union
+    
     boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
 
     return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
@@ -295,23 +341,27 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     return 1.0 - tf.reduce_mean(dice_coeff)
 
 def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
+    
     # Convert sparse labels to one-hot encoded
+    
     y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=tf.shape(y_pred)[-1])
 
     # Flatten the tensors
+    
     y_true_f = tf.reshape(y_true_onehot, [-1, tf.shape(y_pred)[-1]])  # Flatten for multi-class
     y_pred_f = tf.reshape(y_pred, [-1, tf.shape(y_pred)[-1]])  # Flatten for multi-class
 
     # True positives, false positives, false negatives
+    
     true_pos = tf.reduce_sum(y_true_f * y_pred_f, axis=0)
     false_pos = tf.reduce_sum((1 - y_true_f) * y_pred_f, axis=0)
     false_neg = tf.reduce_sum(y_true_f * (1 - y_pred_f), axis=0)
 
     # Tversky loss formula
+    
     tversky = (true_pos + smooth) / (true_pos + alpha * false_neg + beta * false_pos + smooth)
     
     return 1 - tf.reduce_mean(tversky)  # The loss is 1 minus Tversky coefficient
-
 
 # Defines combined loss function (sparse categorical + boundary IoU)
 
@@ -329,6 +379,8 @@ def combined_loss(y_true, y_pred):
     
     dice = dice_loss(y_true, y_pred)
     
+     # Calculates the tversky loss
+
     tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
 
     # Combine the two losses (adjust the weights if necessary)
@@ -338,11 +390,12 @@ def combined_loss(y_true, y_pred):
 
 # Define the ReduceLROnPlateau callback
 
-reduce_lr = ReduceLROnPlateau(
-    monitor='val_loss',   # Monitor validation loss
-    factor=0.5,           # Factor by which the learning rate will be reduced
-    patience=3,           # Number of epochs with no improvement before reducing
-    min_lr=1e-8           # Lower bound for the learning rate
+reduce_lr = CustomReduceLROnPlateau(
+    monitor1='val_loss', 
+    monitor2='val_dice_coefficient', 
+    factor=0.5, 
+    patience=3, 
+    min_lr=1e-8
 )
 
 # Builds the actually model that the image is put through
@@ -400,7 +453,7 @@ model.compile(optimizer='adam',
 
 # Trains the model Specify GPU being used by wtf.device context manager
 
-with tf.device('/GPU:8'):
+with tf.device('/GPU:4'):
     EPOCHS = 20
     steps_per_epoch = info.splits['train'].num_examples // BATCH_SIZE
     validation_steps = info.splits['test'].num_examples // BATCH_SIZE 
