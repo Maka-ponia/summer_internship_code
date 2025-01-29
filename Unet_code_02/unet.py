@@ -241,44 +241,38 @@ def boundary_iou_loss(y_true, y_pred):
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
         # Laplacian kernel for boundary detection (3x3)
-        
         kernel = tf.constant([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=tf.float32)
         
         # Adjust kernel depth based on the number of channels in the input
-        
         kernel = tf.expand_dims(kernel, axis=-1)  # Make it [3, 3, 1]
         
         # Tile the kernel along the last axis (depth) to match the number of channels in the input
-        
         kernel = tf.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
         
         # Add the last dimension to make the kernel [3, 3, channels, 1]
-        
         kernel = tf.expand_dims(kernel, axis=-1)  # Now shape [3, 3, channels, 1]
         
         # Cast mask to float32 and add batch dimension: [batch_size, height, width, channels]
-        
         mask = tf.cast(mask, tf.float32)
         mask = tf.expand_dims(mask, axis=0)  # Add batch dimension: shape [1, height, width, channels]
         
         # Perform convolution to get the boundary
-        
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
-
-    # Compute the boundaries for both true and predicted masks
+    
+    # Compute the boundary for both true and predicted masks
     true_boundary = boundary(y_true)
     pred_boundary = boundary(y_pred)
+    
+    # Intersection over Union (IoU) for boundaries
+    intersection = tf.reduce_sum(true_boundary * pred_boundary, axis=[1, 2, 3])
+    union = tf.reduce_sum(true_boundary + pred_boundary, axis=[1, 2, 3]) + 1e-6  # Avoid division by zero
+    
+    # Calculate the boundary IoU loss
+    boundary_iou = 1 - intersection / union  # Lower IoU = higher loss
+    return tf.reduce_mean(boundary_iou)  # Return the mean loss across the batch
 
-    # Compute the intersection and union of the boundaries
-    intersection = K.sum(true_boundary * pred_boundary)
-    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
-
-    # Compute Boundary IoU as intersection over union
-    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
-
-    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
 # Calculates the dice_loss
 
