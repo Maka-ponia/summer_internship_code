@@ -294,7 +294,6 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     
     return 1.0 - tf.reduce_mean(dice_coeff)
 
-
 def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
     y_true_pos = K.flatten(y_true)
     y_pred_pos = K.flatten(y_pred)
@@ -314,31 +313,29 @@ def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
-    
-    # Tversky Loss
-    
-    tversky = tversky_loss(y_true, y_pred)
-    
-    # Focal Loss
+    print("y_true shape:", y_true.shape)
+    print("y_pred shape:", y_pred.shape)
 
-    focal = focal_loss(y_true, y_pred)
+    # Ensure y_pred has softmax applied for SparseCategoricalCrossentropy
+    y_pred_softmax = tf.nn.softmax(y_pred)
 
-    # Sparse Categorical Crossentropy loss for pixel-wise accuracy
-    
-    scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred)
-    
-    # Boundary IoU loss for boundary accuracy
-    
-    bdy_loss = boundary_iou_loss(y_true, y_pred)
-    
-    # Calculates the dice loss
-    
-    dice = dice_loss(y_true, y_pred)
-    
-    # Combine the two losses (adjust the weights if necessary)
-    
-    total_loss = 0.3 * scce_loss + 0.3 * bdy_loss + 0.15 * dice + 0.15 * tversky + 0.2 * focal
+    # Compute Sparse Categorical Crossentropy (SCCE) loss (y_true remains unchanged)
+    scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred_softmax)
+
+    # Convert y_true to one-hot only for losses that require it
+    num_classes = tf.shape(y_pred)[-1]
+    y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=num_classes)
+
+    # Compute other losses using one-hot encoded y_true
+    tversky = tversky_loss(y_true_onehot, y_pred)
+    focal = focal_loss(y_true_onehot, y_pred)
+    bdy_loss = boundary_iou_loss(y_true_onehot, y_pred)
+    dice = dice_loss(y_true_onehot, y_pred)
+
+    # Weighted sum of losses (adjust weights if needed)
+    total_loss = (0.4 * scce_loss + 0.4 * bdy_loss + 0.1 * dice + 0.1 * tversky + 0.2 * focal)
     return total_loss
+
 
 # Define the ReduceLROnPlateau callback
 
