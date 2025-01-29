@@ -237,6 +237,10 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
+        # Ensure mask has the correct shape (batch_size, height, width, channels)
+        if len(mask.shape) == 3:  # If mask does not have a channel dimension, add it
+            mask = tf.expand_dims(mask, axis=-1)
+        
         # Get the number of channels in the input (y_true or y_pred)
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
@@ -272,6 +276,7 @@ def boundary_iou_loss(y_true, y_pred):
     # Calculate the boundary IoU loss
     boundary_iou = 1 - intersection / union  # Lower IoU = higher loss
     return tf.reduce_mean(boundary_iou)  # Return the mean loss across the batch
+
 
 
 # Calculates the dice_loss
