@@ -237,47 +237,48 @@ def dice_coefficient(y_true, y_pred, smooth=1e-6):
 def boundary_iou_loss(y_true, y_pred):
     # Function to calculate the boundary of the mask (thin boundary).
     def boundary(mask):
-        # Ensure mask has the correct shape (batch_size, height, width, channels)
-        if len(mask.shape) == 3:  # If mask does not have a channel dimension, add it
-            mask = tf.expand_dims(mask, axis=-1)
-        
         # Get the number of channels in the input (y_true or y_pred)
         channels = mask.shape[-1]  # Extract channel dimension (last dimension)
         
         # Laplacian kernel for boundary detection (3x3)
+        
         kernel = tf.constant([[0, 1, 0], [1, -4, 1], [0, 1, 0]], dtype=tf.float32)
         
         # Adjust kernel depth based on the number of channels in the input
+        
         kernel = tf.expand_dims(kernel, axis=-1)  # Make it [3, 3, 1]
         
         # Tile the kernel along the last axis (depth) to match the number of channels in the input
+        
         kernel = tf.tile(kernel, [1, 1, channels])  # Repeat kernel along the depth axis
         
         # Add the last dimension to make the kernel [3, 3, channels, 1]
+        
         kernel = tf.expand_dims(kernel, axis=-1)  # Now shape [3, 3, channels, 1]
         
         # Cast mask to float32 and add batch dimension: [batch_size, height, width, channels]
+        
         mask = tf.cast(mask, tf.float32)
         mask = tf.expand_dims(mask, axis=0)  # Add batch dimension: shape [1, height, width, channels]
         
         # Perform convolution to get the boundary
+        
         boundary = tf.nn.conv2d(mask, kernel, strides=[1, 1, 1, 1], padding='SAME')
         boundary = tf.abs(boundary)  # Take absolute value for boundary pixels
         return boundary
-    
-    # Compute the boundary for both true and predicted masks
+
+    # Compute the boundaries for both true and predicted masks
     true_boundary = boundary(y_true)
     pred_boundary = boundary(y_pred)
-    
-    # Intersection over Union (IoU) for boundaries
-    intersection = tf.reduce_sum(true_boundary * pred_boundary, axis=[1, 2, 3])
-    union = tf.reduce_sum(true_boundary + pred_boundary, axis=[1, 2, 3]) + 1e-6  # Avoid division by zero
-    
-    # Calculate the boundary IoU loss
-    boundary_iou = 1 - intersection / union  # Lower IoU = higher loss
-    return tf.reduce_mean(boundary_iou)  # Return the mean loss across the batch
 
+    # Compute the intersection and union of the boundaries
+    intersection = K.sum(true_boundary * pred_boundary)
+    union = K.sum(true_boundary) + K.sum(pred_boundary) - intersection
 
+    # Compute Boundary IoU as intersection over union
+    boundary_iou = intersection / (union + K.epsilon())  # Adding epsilon to avoid division by zero
+
+    return 1 - boundary_iou  # The loss is 1 minus the IoU (since we want to minimize the loss)
 
 # Calculates the dice_loss
 
@@ -293,48 +294,42 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     
     return 1.0 - tf.reduce_mean(dice_coeff)
 
-def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
-    y_true_pos = K.flatten(y_true)
-    y_pred_pos = K.flatten(y_pred)
-    true_pos = K.sum(y_true_pos * y_pred_pos)
-    false_neg = K.sum(y_true_pos * (1 - y_pred_pos))
-    false_pos = K.sum((1 - y_true_pos) * y_pred_pos)
-    return 1 - (true_pos + smooth) / (true_pos + alpha * false_neg + beta * false_pos + smooth)
+def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3):
+    # Flatten the tensors
+    y_true_f = tf.reshape(y_true, [-1])
+    y_pred_f = tf.reshape(y_pred, [-1])
 
-def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
-    epsilon = K.epsilon()
-    y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
-    cross_entropy = -y_true * K.log(y_pred)
-    weight = alpha * K.pow(1 - y_pred, gamma)
-    return K.mean(weight * cross_entropy, axis=-1)
+    # True positives, false positives, false negatives
+    true_pos = tf.reduce_sum(y_true_f * y_pred_f)
+    false_pos = tf.reduce_sum((1 - y_true_f) * y_pred_f)
+    false_neg = tf.reduce_sum(y_true_f * (1 - y_pred_f))
 
+    # Tversky loss formula
+    tversky = (true_pos + 1e-6) / (true_pos + alpha * false_neg + beta * false_pos + 1e-6)
+    return 1 - tversky  # The loss is 1 - Tversky coefficient
 
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
-    print("y_true shape:", y_true.shape)
-    print("y_pred shape:", y_pred.shape)
+    
+    # Sparse Categorical Crossentropy loss for pixel-wise accuracy
+    
+    scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred)
+    
+    # Boundary IoU loss for boundary accuracy
+    
+    bdy_loss = boundary_iou_loss(y_true, y_pred)
+    
+    # Calculates the dice loss
+    
+    dice = dice_loss(y_true, y_pred)
+    
+    tversky = tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3)
 
-    # Ensure y_pred has softmax applied for SparseCategoricalCrossentropy
-    y_pred_softmax = tf.nn.softmax(y_pred)
-
-    # Compute Sparse Categorical Crossentropy (SCCE) loss (y_true remains unchanged)
-    scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred_softmax)
-
-    # Convert y_true to one-hot only for losses that require it
-    num_classes = tf.shape(y_pred)[-1]
-    y_true_onehot = tf.one_hot(tf.cast(y_true, tf.int32), depth=num_classes)
-
-    # Compute other losses using one-hot encoded y_true
-    tversky = tversky_loss(y_true_onehot, y_pred)
-    focal = focal_loss(y_true_onehot, y_pred)
-    bdy_loss = boundary_iou_loss(y_true_onehot, y_pred)
-    dice = dice_loss(y_true_onehot, y_pred)
-
-    # Weighted sum of losses (adjust weights if needed)
-    total_loss = (0.4 * scce_loss + 0.4 * bdy_loss + 0.1 * dice + 0.1 * tversky + 0.2 * focal)
+    # Combine the two losses (adjust the weights if necessary)
+    
+    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice + 0.25 * tversky
     return total_loss
-
 
 # Define the ReduceLROnPlateau callback
 
