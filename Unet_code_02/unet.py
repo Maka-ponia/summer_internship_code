@@ -121,7 +121,6 @@ def augment_gaussian_blur(sample, kernel_size=5, sigma=1.0):
     # Return the image (you can add normalization if needed)
     return input_image, input_mask
     
-
 # Augment the random saturation 
 
 def augment_random_saturation(sample, lower=0.5, upper=1.5):
@@ -151,18 +150,18 @@ test_dataset = dataset['test'].map(load_test_images, num_parallel_calls=tf.data.
 
 train_dataset_vflip = dataset['train'].map(augment_vertical_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_contrast = dataset['train'].map(augment_contrast, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_resize = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+train_dataset_rbrightness = dataset['train'].map(augment_random_brightness, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_hflip = dataset['train'].map(augment_horizontal_flip, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-train_dataset_gblur = dataset['train'].map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+# train_dataset_gblur = dataset['train'].map(augment_gaussian_blur, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 train_dataset_rsaturate = dataset['train'].map(augment_random_saturation, num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
 # Combine all datasets into one
 
 train_dataset_combined = train_dataset_original.concatenate(train_dataset_vflip)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_contrast)
-train_dataset_combined = train_dataset_combined.concatenate(train_dataset_resize)
+train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rbrightness)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_hflip)
-train_dataset_combined = train_dataset_combined.concatenate(train_dataset_gblur)
+# train_dataset_combined = train_dataset_combined.concatenate(train_dataset_gblur)
 train_dataset_combined = train_dataset_combined.concatenate(train_dataset_rsaturate)
 
 
@@ -295,10 +294,35 @@ def dice_loss(y_true, y_pred, smooth=1e-6):
     
     return 1.0 - tf.reduce_mean(dice_coeff)
 
+
+def tversky_loss(y_true, y_pred, alpha=0.7, beta=0.3, smooth=1e-6):
+    y_true_pos = K.flatten(y_true)
+    y_pred_pos = K.flatten(y_pred)
+    true_pos = K.sum(y_true_pos * y_pred_pos)
+    false_neg = K.sum(y_true_pos * (1 - y_pred_pos))
+    false_pos = K.sum((1 - y_true_pos) * y_pred_pos)
+    return 1 - (true_pos + smooth) / (true_pos + alpha * false_neg + beta * false_pos + smooth)
+
+def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
+    epsilon = K.epsilon()
+    y_pred = K.clip(y_pred, epsilon, 1.0 - epsilon)
+    cross_entropy = -y_true * K.log(y_pred)
+    weight = alpha * K.pow(1 - y_pred, gamma)
+    return K.mean(weight * cross_entropy, axis=-1)
+
+
 # Defines combined loss function (sparse categorical + boundary IoU)
 
 def combined_loss(y_true, y_pred):
     
+    # Tversky Loss
+    
+    tversky = tversky_loss(y_true, y_pred)
+    
+    # Focal Loss
+
+    focal = focal_loss(y_true, y_pred)
+
     # Sparse Categorical Crossentropy loss for pixel-wise accuracy
     
     scce_loss = SparseCategoricalCrossentropy(from_logits=False)(y_true, y_pred)
@@ -313,7 +337,7 @@ def combined_loss(y_true, y_pred):
     
     # Combine the two losses (adjust the weights if necessary)
     
-    total_loss = 0.5 * scce_loss + 0.5 * bdy_loss + 0 * dice
+    total_loss = 0.3 * scce_loss + 0.3 * bdy_loss + 0.15 * dice + 0.15 * tversky + 0.2 * focal
     return total_loss
 
 # Define the ReduceLROnPlateau callback
@@ -321,7 +345,7 @@ def combined_loss(y_true, y_pred):
 reduce_lr = ReduceLROnPlateau(
     monitor='val_loss',   # Monitor validation loss
     factor=0.5,           # Factor by which the learning rate will be reduced
-    patience=5,           # Number of epochs with no improvement before reducing
+    patience=3,           # Number of epochs with no improvement before reducing
     min_lr=1e-8           # Lower bound for the learning rate
 )
 
