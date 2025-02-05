@@ -473,7 +473,7 @@ def show_predications(dataset=None, num=1):
     if dataset:
         for image, mask in dataset.take(num):
             pred_mask = model.predict(image)
-            display_sample([image[0], mask[0], create_mask(pred_mask)], "images", number)
+            display_sample([image[0], mask[0], create_mask(pred_mask)], "images_lesions", number)
             number += 1  
             
 show_predications(test_dataset, 10)
