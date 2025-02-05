@@ -1,0 +1,5 @@
+Before normalization: -1013.625 1613.0
+Before normalization: 0.0 1.0
+
+After normalization: -3.947549 5.92451
+After normalization: -1.0 0.0
