@@ -11,6 +11,9 @@ import matplotlib.pyplot as plt
 from tensorflow.keras import layers, models
 import math
 
+os.environ["CUDA_VISIBLE_DEVICES"]="6"
+
+
 def display_sample(image_list, save_path="output", num=0):
     plt.figure(figsize=(10, 10))
     title = ['Input Image', 'True Mask', 'Predicted Mask']
@@ -362,7 +365,7 @@ model.compile(optimizer='adam',
 # Trains the model Specify GPU being used by wtf.device context manager
 
 # Train the model
-with tf.device('/GPU:4'):
+with tf.device('/GPU:6'):
     EPOCHS = 20
     steps_per_epoch = train_dataset_combined.cardinality().numpy() // BATCH_SIZE
     validation_steps = test_dataset.cardinality().numpy() // BATCH_SIZE
